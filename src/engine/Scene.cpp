@@ -639,9 +639,9 @@ void Scene::RefreshBuffers(nvrhi::ICommandList* commandList, uint32_t frameIndex
     const size_t allocationGranularity = 1024;
     bool arraysAllocated = false;
 
-    if (m_EnableBindlessResources && m_SceneGraph->GetMeshes().size() > m_Resources->geometryData.size())
+    if (m_EnableBindlessResources && m_SceneGraph->GetGeometryCount() > m_Resources->geometryData.size())
     {
-        m_Resources->geometryData.resize(nvrhi::align<size_t>(m_SceneGraph->GetMeshes().size(), allocationGranularity));
+        m_Resources->geometryData.resize(nvrhi::align<size_t>(m_SceneGraph->GetGeometryCount(), allocationGranularity));
         m_GeometryBuffer = CreateGeometryBuffer();
         arraysAllocated = true;
     }

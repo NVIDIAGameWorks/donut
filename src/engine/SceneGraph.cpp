@@ -534,8 +534,12 @@ void SceneGraph::RegisterLeaf(const std::shared_ptr<SceneGraphLeaf>& leaf)
         const auto& mesh = meshInstance->GetMesh();
         if (mesh)
         {
-            if (m_Meshes.AddRef(mesh) && OnMeshAdded)
-                OnMeshAdded(mesh);
+            if (m_Meshes.AddRef(mesh))
+            {
+                m_GeometryCount += mesh->geometries.size();
+                if (OnMeshAdded)
+                    OnMeshAdded(mesh);
+            }
 
             for (const auto& geometry : mesh->geometries)
             {
@@ -545,8 +549,12 @@ void SceneGraph::RegisterLeaf(const std::shared_ptr<SceneGraphLeaf>& leaf)
 
             if (mesh->skinPrototype)
             {
-                if (m_Meshes.AddRef(mesh->skinPrototype) && OnMeshAdded)
-                    OnMeshAdded(mesh->skinPrototype);
+                if (m_Meshes.AddRef(mesh->skinPrototype))
+                {
+                    m_GeometryCount += mesh->skinPrototype->geometries.size();
+                    if (OnMeshAdded)
+                        OnMeshAdded(mesh->skinPrototype);
+                }
             }
         }
         m_MeshInstances.push_back(meshInstance);
@@ -593,8 +601,12 @@ void SceneGraph::UnregisterLeaf(const std::shared_ptr<SceneGraphLeaf>& leaf)
         const auto& mesh = meshInstance->GetMesh();
         if (mesh)
         {
-            if (m_Meshes.Release(mesh) && OnMeshRemoved)
-                OnMeshRemoved(mesh);
+            if (m_Meshes.Release(mesh))
+            {
+                m_GeometryCount += mesh->geometries.size();
+                if (OnMeshRemoved)
+                    OnMeshRemoved(mesh);
+            }
 
             for (const auto& geometry : mesh->geometries)
             {
@@ -604,8 +616,12 @@ void SceneGraph::UnregisterLeaf(const std::shared_ptr<SceneGraphLeaf>& leaf)
 
             if (mesh->skinPrototype)
             {
-                if (m_Meshes.Release(mesh->skinPrototype) && OnMeshRemoved)
-                    OnMeshRemoved(mesh->skinPrototype);
+                if (m_Meshes.Release(mesh->skinPrototype))
+                {
+                    m_GeometryCount += mesh->skinPrototype->geometries.size();
+                    if (OnMeshRemoved)
+                        OnMeshRemoved(mesh->skinPrototype);
+                }
             }
         }
 
@@ -1092,6 +1108,8 @@ void SceneGraph::Refresh(uint32_t frameIndex)
             mesh->globalMeshIndex = meshIndex;
             ++meshIndex;
         }
+
+        assert(m_GeometryCount == geometryIndex);
 
         int materialIndex = 0;
         for (const auto& material : m_Materials)

@@ -522,6 +522,7 @@ namespace donut::engine
         std::shared_ptr<SceneGraphNode> m_Root;
         ResourceTracker<Material> m_Materials;
         ResourceTracker<MeshInfo> m_Meshes;
+        size_t m_GeometryCount = 0;
         std::vector<std::shared_ptr<MeshInstance>> m_MeshInstances;
         std::vector<std::shared_ptr<SkinnedMeshInstance>> m_SkinnedMeshInstances;
         std::vector<std::shared_ptr<SceneGraphAnimation>> m_Animations;
@@ -544,6 +545,7 @@ namespace donut::engine
         [[nodiscard]] const std::shared_ptr<SceneGraphNode>& GetRootNode() const { return m_Root; }
         [[nodiscard]] const ResourceTracker<Material>& GetMaterials() const { return m_Materials; }
         [[nodiscard]] const ResourceTracker<MeshInfo>& GetMeshes() const { return m_Meshes; }
+        [[nodiscard]] const size_t GetGeometryCount() const { return m_GeometryCount; }
         [[nodiscard]] const std::vector<std::shared_ptr<MeshInstance>>& GetMeshInstances() const { return m_MeshInstances; }
         [[nodiscard]] const std::vector<std::shared_ptr<SkinnedMeshInstance>>& GetSkinnedMeshInstances() const { return m_SkinnedMeshInstances; }
         [[nodiscard]] const std::vector<std::shared_ptr<SceneGraphAnimation>>& GetAnimations() const { return m_Animations; }
