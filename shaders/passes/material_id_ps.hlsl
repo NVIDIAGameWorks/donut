@@ -25,10 +25,22 @@
 #include <donut/shaders/forward_vertex.hlsli>
 #include <donut/shaders/vulkan.hlsli>
 
-cbuffer c_Instance : register(b2 VK_DESCRIPTOR_SET(1))
-{
-    uint g_InstanceOffset;
+struct Constants {
+    uint instanceOffset;
 };
+
+#ifdef SPIRV
+
+VK_PUSH_CONSTANT ConstantBuffer<Constants> g_Const : register(b2);
+
+#else
+
+cbuffer c_Instance : register(b2)
+{
+    Constants g_Const;
+};
+
+#endif
 
 void main(
     in float4 i_position : SV_Position,
@@ -46,6 +58,6 @@ void main(
 #endif
 
     o_output.x = uint(g_Material.materialID);
-    o_output.y = g_InstanceOffset + i_instance;
+    o_output.y = g_Const.instanceOffset + i_instance;
     o_output.zw = 0;
 }
