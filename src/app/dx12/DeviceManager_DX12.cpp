@@ -55,7 +55,7 @@ freely, subject to the following restrictions:
 #include <donut/core/log.h>
 
 #include <Windows.h>
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <dxgidebug.h>
 
 #include <nvrhi/d3d12.h>
@@ -83,6 +83,7 @@ class DeviceManager_DX12 : public DeviceManager
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC             m_FullScreenDesc{};
     RefCountPtr<IDXGIAdapter>                   m_DxgiAdapter;
     HWND                                        m_hWnd = nullptr;
+    bool                                        m_TearingSupported = false;
 
     std::vector<RefCountPtr<ID3D12Resource>>    m_SwapChainBuffers;
     std::vector<nvrhi::TextureHandle>           m_RhiSwapChainBuffers;
@@ -328,6 +329,19 @@ bool DeviceManager_DX12::CreateDeviceAndSwapChain()
     hr = CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&pDxgiFactory));
     HR_RETURN(hr)
 
+    RefCountPtr<IDXGIFactory5> pDxgiFactory5;
+    if (SUCCEEDED(pDxgiFactory->QueryInterface(IID_PPV_ARGS(&pDxgiFactory5))))
+    {
+        BOOL supported = 0;
+        if (SUCCEEDED(pDxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &supported, sizeof(supported))))
+            m_TearingSupported = (supported != 0);
+    }
+
+    if (m_TearingSupported)
+    {
+        m_SwapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    }
+
     hr = D3D12CreateDevice(
         targetAdapter,
         m_DeviceParams.featureLevel,
@@ -391,7 +405,7 @@ bool DeviceManager_DX12::CreateDeviceAndSwapChain()
     m_FullScreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
     m_FullScreenDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
     m_FullScreenDesc.Windowed = !m_DeviceParams.startFullscreen;
-
+    
     RefCountPtr<IDXGISwapChain1> pSwapChain1;
     hr = pDxgiFactory->CreateSwapChainForHwnd(m_GraphicsQueue, m_hWnd, &m_SwapChainDesc, &m_FullScreenDesc, nullptr, &pSwapChain1);
     HR_RETURN(hr)
@@ -591,7 +605,11 @@ void DeviceManager_DX12::Present()
 
     auto bufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
-    m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, 0);
+    UINT presentFlags = 0;
+    if (!m_DeviceParams.vsyncEnabled && m_FullScreenDesc.Windowed && m_TearingSupported)
+        presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+
+    m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, presentFlags);
 
     m_FrameFence->SetEventOnCompletion(m_FrameCount, m_FrameFenceEvents[bufferIndex]);
     m_GraphicsQueue->Signal(m_FrameFence, m_FrameCount);
