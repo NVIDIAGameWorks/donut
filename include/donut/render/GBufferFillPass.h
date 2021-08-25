@@ -59,7 +59,12 @@ namespace donut::render
         class Context : public GeometryPassContext
         {
         public:
-            PipelineKey keyTemplate{};
+            PipelineKey keyTemplate;
+
+            Context()
+            {
+                keyTemplate.value = 0;
+            }
         };
 
         struct CreateParameters

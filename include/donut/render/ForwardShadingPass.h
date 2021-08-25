@@ -76,7 +76,12 @@ namespace donut::render
         {
         public:
             nvrhi::BindingSetHandle lightBindingSet;
-            PipelineKey keyTemplate{};
+            PipelineKey keyTemplate;
+
+            Context()
+            {
+                keyTemplate.value = 0;
+            }
         };
 
         struct CreateParameters
