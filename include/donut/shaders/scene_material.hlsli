@@ -131,10 +131,18 @@ void ApplyNormalMap(inout MaterialSample result, float4 tangent, float4 normalsT
     float squareTangentLength = dot(tangent.xyz, tangent.xyz);
     if (squareTangentLength == 0)
         return;
+    
+    if (tangent.w == 0)
+        return;
 
-    normalsTextureValue.xyz = normalsTextureValue.xyz * 2.0 - 1.0;
+    normalsTextureValue.xy = normalsTextureValue.xy * 2.0 - 1.0;
     normalsTextureValue.xy *= normalTextureScale;
-    normalsTextureValue.z = abs(normalsTextureValue.z);
+
+    if (normalsTextureValue.z <= 0)
+        normalsTextureValue.z = sqrt(saturate(1.0 - square(normalsTextureValue.x) - square(normalsTextureValue.y)));
+    else
+        normalsTextureValue.z = abs(normalsTextureValue.z * 2.0 - 1.0);
+
     float squareNormalMapLength = dot(normalsTextureValue.xyz, normalsTextureValue.xyz);
 
     if (squareNormalMapLength == 0)
