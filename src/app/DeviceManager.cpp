@@ -230,6 +230,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     }
 
     this->m_DeviceParams = params;
+    m_RequestedVSync = params.vsyncEnabled;
 
     glfwSetErrorCallback(ErrorCallback_GLFW);
 
@@ -265,18 +266,26 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
                                 params.startFullscreen ? glfwGetPrimaryMonitor() : nullptr,
                                 nullptr);
 
-    if (windowTitle)
-        m_WindowTitle = windowTitle;
-
-    int fbWidth = 0, fbHeight = 0;
-    glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
-    m_DeviceParams.backBufferWidth = fbWidth;
-    m_DeviceParams.backBufferHeight = fbHeight;
-
     if (m_Window == nullptr)
     {
         return false;
     }
+
+    if (params.startFullscreen)
+    {
+        glfwSetWindowMonitor(m_Window, glfwGetPrimaryMonitor(), 0, 0,
+            m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight, m_DeviceParams.refreshRate);
+    }
+    else
+    {
+        int fbWidth = 0, fbHeight = 0;
+        glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
+        m_DeviceParams.backBufferWidth = fbWidth;
+        m_DeviceParams.backBufferHeight = fbHeight;
+    }
+
+    if (windowTitle)
+        m_WindowTitle = windowTitle;
 
     glfwSetWindowUserPointer(m_Window, this);
 

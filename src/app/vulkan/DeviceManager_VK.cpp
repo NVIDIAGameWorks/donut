@@ -910,6 +910,13 @@ void DeviceManager_VK::Present()
     }
     else
     {
+#ifndef _WIN32
+        if (m_DeviceParams.vsyncEnabled)
+        {
+            m_PresentQueue.waitIdle();
+        }
+#endif
+
         while (m_FramesInFlight.size() > m_DeviceParams.maxFramesInFlight)
         {
             auto query = m_FramesInFlight.front();
