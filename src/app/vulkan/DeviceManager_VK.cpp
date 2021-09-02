@@ -172,7 +172,8 @@ private:
     VulkanExtensionSet optionalExtensions = {
         // instance
         { 
-            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME
+            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         },
         // layers
         { },
