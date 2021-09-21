@@ -132,6 +132,16 @@ namespace donut::app
         DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
         D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 #endif
+
+#if USE_VK
+        std::vector<std::string> requiredVulkanInstanceExtensions;
+        std::vector<std::string> requiredVulkanDeviceExtensions;
+        std::vector<std::string> requiredVulkanLayers;
+        std::vector<std::string> optionalVulkanInstanceExtensions;
+        std::vector<std::string> optionalVulkanDeviceExtensions;
+        std::vector<std::string> optionalVulkanLayers;
+        std::vector<size_t> ignoredVulkanValidationMessageLocations;
+#endif
     };
 
     class IRenderPass;
@@ -241,6 +251,13 @@ namespace donut::app
 
         void SetWindowTitle(const char* title);
         void SetInformativeWindowTitle(const char* applicationName, const char* extraInfo = nullptr);
+
+        virtual bool IsVulkanInstanceExtensionEnabled(const char* extensionName) const { return false; }
+        virtual bool IsVulkanDeviceExtensionEnabled(const char* extensionName) const { return false; }
+        virtual bool IsVulkanLayerEnabled(const char* layerName) const { return false; }
+        virtual void GetEnabledVulkanInstanceExtensions(std::vector<std::string>& extensions) const { }
+        virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const { }
+        virtual void GetEnabledVulkanLayers(std::vector<std::string>& layers) const { }
 
     private:
         static DeviceManager* CreateD3D11();

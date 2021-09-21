@@ -64,22 +64,6 @@ using namespace donut::app;
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(
-    VkDebugReportFlagsEXT flags,
-    VkDebugReportObjectTypeEXT objType,
-    uint64_t obj,
-    size_t location,
-    int32_t code,
-    const char *layerPrefix,
-    const char *msg,
-    void *userData)
-{
-    log::warning("[Vulkan: location=%zu code=%d, layerPrefix='%s'] %s", location, code, layerPrefix, msg);
-
-    return VK_FALSE;
-}
-
-
 class DeviceManager_VK : public DeviceManager
 {
 public:
@@ -134,6 +118,39 @@ protected:
     const char *GetRendererString() const override
     {
         return m_RendererString.c_str();
+    }
+
+    bool IsVulkanInstanceExtensionEnabled(const char* extensionName) const override
+    {
+        return enabledExtensions.instance.find(extensionName) != enabledExtensions.instance.end();
+    }
+
+    bool IsVulkanDeviceExtensionEnabled(const char* extensionName) const override
+    {
+        return enabledExtensions.device.find(extensionName) != enabledExtensions.device.end();
+    }
+    
+    bool IsVulkanLayerEnabled(const char* layerName) const override
+    {
+        return enabledExtensions.layers.find(layerName) != enabledExtensions.layers.end();
+    }
+
+    void GetEnabledVulkanInstanceExtensions(std::vector<std::string>& extensions) const override
+    {
+        for (const auto& ext : enabledExtensions.instance)
+            extensions.push_back(ext);
+    }
+
+    void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const override
+    {
+        for (const auto& ext : enabledExtensions.device)
+            extensions.push_back(ext);
+    }
+
+    void GetEnabledVulkanLayers(std::vector<std::string>& layers) const override
+    {
+        for (const auto& ext : enabledExtensions.layers)
+            layers.push_back(ext);
     }
 
 private:
@@ -234,6 +251,33 @@ private:
 
     std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
     std::vector<nvrhi::EventQueryHandle> m_QueryPool;
+
+private:
+    static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(
+        VkDebugReportFlagsEXT flags,
+        VkDebugReportObjectTypeEXT objType,
+        uint64_t obj,
+        size_t location,
+        int32_t code,
+        const char* layerPrefix,
+        const char* msg,
+        void* userData)
+    {
+        const DeviceManager_VK* manager = (const DeviceManager_VK*)userData;
+
+        if (manager)
+        {
+            const auto& ignored = manager->m_DeviceParams.ignoredVulkanValidationMessageLocations;
+            const auto found = std::find(ignored.begin(), ignored.end(), location);
+            if (found != ignored.end())
+                return VK_FALSE;
+        }
+
+        log::warning("[Vulkan: location=0x%zx code=%d, layerPrefix='%s'] %s", location, code, layerPrefix, msg);
+
+        return VK_FALSE;
+    }
+
 };
 
 static std::vector<const char *> stringSetToVector(const std::unordered_set<std::string>& set)
@@ -276,6 +320,28 @@ bool DeviceManager_VK::createInstance()
         enabledExtensions.instance.insert(std::string(glfwExt[i]));
     }
 
+    // add instance extensions requested by the user
+    for (const std::string& name : m_DeviceParams.requiredVulkanInstanceExtensions)
+    {
+        enabledExtensions.instance.insert(name);
+    }
+    for (const std::string& name : m_DeviceParams.optionalVulkanInstanceExtensions)
+    {
+        optionalExtensions.instance.insert(name);
+    }
+
+    // add layers requested by the user
+    for (const std::string& name : m_DeviceParams.requiredVulkanLayers)
+    {
+        enabledExtensions.layers.insert(name);
+    }
+    for (const std::string& name : m_DeviceParams.optionalVulkanLayers)
+    {
+        optionalExtensions.layers.insert(name);
+    }
+
+    std::unordered_set<std::string> requiredExtensions = enabledExtensions.instance;
+
     // figure out which optional extensions are supported
     for(const auto& instanceExt : vk::enumerateInstanceExtensionProperties())
     {
@@ -284,6 +350,19 @@ bool DeviceManager_VK::createInstance()
         {
             enabledExtensions.instance.insert(name);
         }
+
+        requiredExtensions.erase(name);
+    }
+
+    if (!requiredExtensions.empty())
+    {
+        std::stringstream ss;
+        ss << "Cannot create a Vulkan instance because the following required extension(s) are not supported:";
+        for (const auto& ext : requiredExtensions)
+            ss << std::endl << "  - " << ext;
+
+        log::error("%s", ss.str().c_str());
+        return false;
     }
 
     log::info("Enabled Vulkan instance extensions:");
@@ -292,6 +371,8 @@ bool DeviceManager_VK::createInstance()
         log::info("    %s", ext.c_str());
     }
 
+    std::unordered_set<std::string> requiredLayers = enabledExtensions.layers;
+
     for(const auto& layer : vk::enumerateInstanceLayerProperties())
     {
         const std::string name = layer.layerName;
@@ -299,8 +380,21 @@ bool DeviceManager_VK::createInstance()
         {
             enabledExtensions.layers.insert(name);
         }
+
+        requiredLayers.erase(name);
     }
 
+    if (!requiredLayers.empty())
+    {
+        std::stringstream ss;
+        ss << "Cannot create a Vulkan instance because the following required layer(s) are not supported:";
+        for (const auto& ext : requiredLayers)
+            ss << std::endl << "  - " << ext;
+
+        log::error("%s", ss.str().c_str());
+        return false;
+    }
+    
     log::info("Enabled Vulkan layers:");
     for (const auto& layer : enabledExtensions.layers)
     {
@@ -340,7 +434,8 @@ void DeviceManager_VK::installDebugCallback()
                               vk::DebugReportFlagBitsEXT::eWarning |
                             //   vk::DebugReportFlagBitsEXT::eInformation |
                               vk::DebugReportFlagBitsEXT::ePerformanceWarning)
-                    .setPfnCallback(vulkanDebugCallback);
+                    .setPfnCallback(vulkanDebugCallback)
+                    .setPUserData(this);
 
     vk::Result res = m_VulkanInstance.createDebugReportCallbackEXT(&info, nullptr, &m_DebugReportCallback);
     assert(res == vk::Result::eSuccess);
@@ -353,12 +448,18 @@ bool DeviceManager_VK::pickPhysicalDevice()
 
     auto devices = m_VulkanInstance.enumeratePhysicalDevices();
 
+    // Start building an error message in case we cannot find a device.
+    std::stringstream errorStream;
+    errorStream << "Cannot find a Vulkan device that supports all the required extensions and properties.";
+
     // build a list of GPUs
     std::vector<vk::PhysicalDevice> discreteGPUs;
     std::vector<vk::PhysicalDevice> otherGPUs;
     for(const auto& dev : devices)
     {
         auto prop = dev.getProperties();
+
+        errorStream << std::endl << prop.deviceName.data() << ":";
 
         // check that all required device extensions are present
         std::unordered_set<std::string> requiredExtensions = enabledExtensions.device;
@@ -368,22 +469,29 @@ bool DeviceManager_VK::pickPhysicalDevice()
             requiredExtensions.erase(std::string(ext.extensionName.data()));
         }
 
+        bool deviceIsGood = true;
+
         if (!requiredExtensions.empty())
         {
             // device is missing one or more required extensions
-            continue;
+            for (const auto& ext : requiredExtensions)
+            {
+                errorStream << std::endl << "  - missing " << ext;
+            }
+            deviceIsGood = false;
         }
 
         auto deviceFeatures = dev.getFeatures();
         if (!deviceFeatures.samplerAnisotropy)
         {
             // device is a toaster oven
-            continue;
+            errorStream << std::endl << "  - does not support samplerAnisotropy";
+            deviceIsGood = false;
         }
         if (!deviceFeatures.textureCompressionBC)
         {
-            // uh-oh
-            continue;
+            errorStream << std::endl << "  - does not support textureCompressionBC";
+            deviceIsGood = false;
         }
 
         // check that this device supports our intended swap chain creation parameters
@@ -399,7 +507,8 @@ bool DeviceManager_VK::pickPhysicalDevice()
             surfaceCaps.maxImageExtent.height < requestedExtent.height)
         {
             // swap chain parameters don't match device capabilities
-            continue;
+            errorStream << std::endl << "  - cannot support the requested swap chain size";
+            deviceIsGood = false;
         }
 
         bool surfaceFormatPresent = false;
@@ -415,21 +524,27 @@ bool DeviceManager_VK::pickPhysicalDevice()
         if (!surfaceFormatPresent)
         {
             // can't create a swap chain using the format requested
-            continue;
+            errorStream << std::endl << "  - does not support the requested swap chain format";
+            deviceIsGood = false;
         }
 
         if (!findQueueFamilies(dev))
         {
             // device doesn't have all the queue families we need
-            continue;
+            errorStream << std::endl << "  - does not support the necessary queue types";
+            deviceIsGood = false;
         }
 
         // check that we can present from the graphics queue
         uint32_t canPresent = dev.getSurfaceSupportKHR(m_GraphicsQueueFamily, m_WindowSurface);
         if (!canPresent)
         {
-            continue;
+            errorStream << std::endl << "  - cannot present";
+            deviceIsGood = false;
         }
+
+        if (!deviceIsGood)
+            continue;
 
         if (prop.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
         {
@@ -451,6 +566,8 @@ bool DeviceManager_VK::pickPhysicalDevice()
         m_VulkanPhysicalDevice = otherGPUs[0];
         return true;
     }
+
+    log::error("%s", errorStream.str().c_str());
 
     return false;
 }
@@ -784,6 +901,16 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain()
         m_DeviceParams.swapChainFormat = nvrhi::Format::SBGRA8_UNORM;
     else if (m_DeviceParams.swapChainFormat == nvrhi::Format::RGBA8_UNORM)
         m_DeviceParams.swapChainFormat = nvrhi::Format::BGRA8_UNORM;
+
+    // add device extensions requested by the user
+    for (const std::string& name : m_DeviceParams.requiredVulkanDeviceExtensions)
+    {
+        enabledExtensions.device.insert(name);
+    }
+    for (const std::string& name : m_DeviceParams.optionalVulkanDeviceExtensions)
+    {
+        optionalExtensions.device.insert(name);
+    }
 
     CHECK(createWindowSurface())
     CHECK(pickPhysicalDevice())
