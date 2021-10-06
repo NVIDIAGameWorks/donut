@@ -23,6 +23,7 @@
 #pragma once
 
 #include <donut/core/math/math.h>
+#include <string>
 #include <memory>
 #include <unordered_map>
 #include <optional>

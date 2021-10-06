@@ -500,14 +500,22 @@ bool DeviceManager_VK::pickPhysicalDevice()
         auto surfacePModes = dev.getSurfacePresentModesKHR(m_WindowSurface);
 
         if (surfaceCaps.minImageCount > m_DeviceParams.swapChainBufferCount ||
-            surfaceCaps.maxImageCount < m_DeviceParams.swapChainBufferCount ||
-            surfaceCaps.minImageExtent.width > requestedExtent.width ||
+            (surfaceCaps.maxImageCount < m_DeviceParams.swapChainBufferCount && surfaceCaps.maxImageCount > 0))
+        {
+            errorStream << std::endl << "  - cannot support the requested swap chain image count:";
+            errorStream << " requested " << m_DeviceParams.swapChainBufferCount << ", available " << surfaceCaps.minImageCount << " - " << surfaceCaps.maxImageCount;
+            deviceIsGood = false;
+        }
+
+        if (surfaceCaps.minImageExtent.width > requestedExtent.width ||
             surfaceCaps.minImageExtent.height > requestedExtent.height ||
             surfaceCaps.maxImageExtent.width < requestedExtent.width ||
             surfaceCaps.maxImageExtent.height < requestedExtent.height)
         {
-            // swap chain parameters don't match device capabilities
-            errorStream << std::endl << "  - cannot support the requested swap chain size";
+            errorStream << std::endl << "  - cannot support the requested swap chain size:";
+            errorStream << " requested " << requestedExtent.width << "x" << requestedExtent.height << ", ";
+            errorStream << " available " << surfaceCaps.minImageExtent.width << "x" << surfaceCaps.minImageExtent.height;
+            errorStream << " - " << surfaceCaps.maxImageExtent.width << "x" << surfaceCaps.maxImageExtent.height;
             deviceIsGood = false;
         }
 
@@ -725,7 +733,6 @@ bool DeviceManager_VK::createDevice()
     auto deviceFeatures = vk::PhysicalDeviceFeatures()
         .setShaderImageGatherExtended(true)
         .setSamplerAnisotropy(true)
-        .setShaderFloat64(true)
         .setTessellationShader(true)
         .setTextureCompressionBC(true)
         .setGeometryShader(true)
