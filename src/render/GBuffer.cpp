@@ -23,6 +23,7 @@
 #include <donut/render/GBuffer.h>
 #include <donut/engine/CommonRenderPasses.h>
 #include <donut/engine/FramebufferFactory.h>
+#include <nvrhi/utils.h>
 
 using namespace donut::math;
 using namespace donut::engine;
@@ -67,8 +68,19 @@ void GBufferRenderTargets::Init(
     desc.debugName = "GBufferEmissive";
     GBufferEmissive = device->createTexture(desc);
 
+    const nvrhi::Format depthFormats[] = {
+        nvrhi::Format::D24S8,
+        nvrhi::Format::D32S8,
+        nvrhi::Format::D32,
+        nvrhi::Format::D16 };
+
+    const nvrhi::FormatSupport depthFeatures = 
+        nvrhi::FormatSupport::Texture |
+        nvrhi::FormatSupport::DepthStencil |
+        nvrhi::FormatSupport::ShaderLoad;
+
+    desc.format = nvrhi::utils::ChooseFormat(device, depthFeatures, depthFormats, std::size(depthFormats));
     desc.isTypeless = true;
-    desc.format = nvrhi::Format::D24S8;
     desc.initialState = nvrhi::ResourceStates::DepthWrite;
     desc.clearValue = useReverseProjection ? nvrhi::Color(0.f) : nvrhi::Color(1.f);
     desc.debugName = "GBufferDepth";
@@ -105,8 +117,10 @@ void GBufferRenderTargets::Init(
 
 void GBufferRenderTargets::Clear(nvrhi::ICommandList* commandList)
 {
+    const nvrhi::FormatInfo& depthFormatInfo = nvrhi::getFormatInfo(Depth->getDesc().format);
+
     float depthClearValue = m_UseReverseProjection ? 0.f : 1.f;
-    commandList->clearDepthStencilTexture(Depth, nvrhi::AllSubresources, true, depthClearValue, true, 0);
+    commandList->clearDepthStencilTexture(Depth, nvrhi::AllSubresources, true, depthClearValue, depthFormatInfo.hasStencil, 0);
     commandList->clearTextureFloat(GBufferDiffuse, nvrhi::AllSubresources, nvrhi::Color(0.f));
     commandList->clearTextureFloat(GBufferSpecular, nvrhi::AllSubresources, nvrhi::Color(0.f));
     commandList->clearTextureFloat(GBufferNormals, nvrhi::AllSubresources, nvrhi::Color(0.f));

@@ -405,5 +405,7 @@ void donut::render::CascadedShadowMap::SetNumberOfCascadesUnsafe(int cascades)
 
 void CascadedShadowMap::Clear(nvrhi::ICommandList* commandList)
 {
-    commandList->clearDepthStencilTexture(m_ShadowMapTexture, nvrhi::AllSubresources, true, 1.f, true, 0);
+    const nvrhi::FormatInfo& depthFormatInfo = nvrhi::getFormatInfo(m_ShadowMapTexture->getDesc().format);
+
+    commandList->clearDepthStencilTexture(m_ShadowMapTexture, nvrhi::AllSubresources, true, 1.f, depthFormatInfo.hasStencil, 0);
 }
