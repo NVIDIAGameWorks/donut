@@ -27,18 +27,23 @@ struct TemporalAntiAliasingConstants
 {
     float4x4 reprojectionMatrix;
 
-    float2 previousViewOrigin;
-    float2 previousViewSize;
+    float2 inputViewOrigin;
+    float2 inputViewSize;
 
-    float2 viewOrigin;
-    float2 viewSize;
+    float2 outputViewOrigin;
+    float2 outputViewSize;
 
-    float2 sourceTextureSizeInv;
+    float2 inputPixelOffset;
+    float2 outputTextureSizeInv;
+
+    float2 inputOverOutputViewSize;
+    float2 outputOverInputViewSize;
+
     float clampingFactor;
     float newFrameWeight;
-
     float pqC;
     float invPqC;
+
     uint stencilMask;
 };
 

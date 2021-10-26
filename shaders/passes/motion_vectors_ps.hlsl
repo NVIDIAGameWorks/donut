@@ -65,7 +65,7 @@ void main(
     prevUV.x = 0.5 + prevClipPos.x * 0.5;
     prevUV.y = 0.5 - prevClipPos.y * 0.5;
 
-    float2 prevWindowPos = prevUV * g_TemporalAA.previousViewSize + g_TemporalAA.previousViewOrigin;
+    float2 prevWindowPos = prevUV * g_TemporalAA.inputViewSize + g_TemporalAA.inputViewOrigin;
 
     o_color.xy = prevWindowPos.xy - i_position.xy;
 }

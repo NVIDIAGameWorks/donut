@@ -112,8 +112,8 @@ namespace donut::render
             nvrhi::ICommandList* commandList,
             const TemporalAntiAliasingParameters& params,
             bool feedbackIsValid,
-            const engine::ICompositeView& compositeView,
-            const engine::ICompositeView& compositeViewPrevious);
+            const engine::ICompositeView& compositeViewInput,
+            const engine::ICompositeView& compositeViewOutput);
 
         void AdvanceFrame();
         void SetJitter(TemporalAntiAliasingJitter jitter);

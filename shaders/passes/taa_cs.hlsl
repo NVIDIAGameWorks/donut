@@ -47,8 +47,8 @@ RWTexture2D<float4> u_FeedbackOutput : register(u1);
 
 #define GROUP_X 16
 #define GROUP_Y 16
-#define BUFFER_X (GROUP_X + 2)
-#define BUFFER_Y (GROUP_Y + 2)
+#define BUFFER_X (GROUP_X + 3)
+#define BUFFER_Y (GROUP_Y + 3)
 #define RENAMED_GROUP_Y ((GROUP_X * GROUP_Y) / BUFFER_X)
 
 groupshared float4 s_ColorsAndLengths[BUFFER_Y][BUFFER_X];
@@ -148,22 +148,28 @@ void Preload(int2 sharedID, int2 globalID)
 	s_MotionVectors[sharedID.y][sharedID.x] = motion;
 }
 
+float2 OutputToInput(int2 pixelPosRelativeToOrigin)
+{
+    return (float2(pixelPosRelativeToOrigin) + 0.5) * g_TemporalAA.inputOverOutputViewSize
+        - 0.5 + g_TemporalAA.inputViewOrigin + g_TemporalAA.inputPixelOffset;
+}
+
 [numthreads(GROUP_X, GROUP_Y, 1)]
 void main(
+    in int2 i_groupIdx : SV_GroupID,
     in int2 i_threadIdx : SV_GroupThreadID,
     in int2 i_globalIdx : SV_DispatchThreadID
 )
 {
-    int2 pixelPosition = i_globalIdx + int2(g_TemporalAA.viewOrigin);
-
-    // Rename the 16x16 group into a 18x14 group + 4 idle threads in the end
+    // Rename the 16x16 group into a 19x13 group + 9 idle threads in the end
 
     int2 newID;
     float linearID = i_threadIdx.y * GROUP_X + i_threadIdx.x;
     linearID = (linearID + 0.5) / float(BUFFER_X);
     newID.y = int(floor(linearID));
     newID.x = int(floor(frac(linearID) * BUFFER_X));
-    int2 groupBase = pixelPosition - i_threadIdx - 1;
+
+    int2 groupBase = int2(OutputToInput(i_groupIdx * int2(GROUP_X, GROUP_Y)) - 1);
 
     // Preload the colors and motion vectors into shared memory
 
@@ -183,6 +189,11 @@ void main(
 
     // Calculate the color distribution and find the longest MV in the neighbourhood
 
+    int2 outputPixelPosition = i_globalIdx + int2(g_TemporalAA.outputViewOrigin);
+    float2 inputPos = OutputToInput(i_globalIdx);
+    int2 inputPosInt = int2(round(inputPos));
+    int2 inputPosShared = inputPosInt - groupBase - 1;
+    
     float3 colorMoment1 = 0;
     float3 colorMoment2 = 0;
     float longestMVLength = -1;
@@ -195,7 +206,7 @@ void main(
         [unroll]
         for (int dx = 0; dx <= 2; dx++)
         {
-            int2 pos = i_threadIdx.xy + int2(dx, dy);
+            int2 pos = inputPosShared + int2(dx, dy);
 
             float4 colorAndLength = s_ColorsAndLengths[pos.y][pos.x];
             float3 color = colorAndLength.rgb;
@@ -228,15 +239,17 @@ void main(
 
     // Sample the previous frame using the longest MV
 
-    float2 sourcePos = float2(pixelPosition.xy) + longestMV + 0.5;
+    longestMV *= g_TemporalAA.outputOverInputViewSize;
+    float2 sourcePos = float2(outputPixelPosition.xy) + longestMV + 0.5;
 
     float3 resultPQ;
-    if (g_TemporalAA.newFrameWeight < 1 && all(sourcePos.xy > g_TemporalAA.previousViewOrigin) && all(sourcePos.xy < g_TemporalAA.previousViewOrigin + g_TemporalAA.previousViewSize))
+    if (g_TemporalAA.newFrameWeight < 1.0 && all(sourcePos.xy > g_TemporalAA.outputViewOrigin) 
+        && all(sourcePos.xy < g_TemporalAA.outputViewOrigin + g_TemporalAA.outputViewSize))
     {
 #if USE_CATMULL_ROM_FILTER
-        float3 history = BicubicSampleCatmullRom(t_FeedbackInput, s_Sampler, sourcePos, g_TemporalAA.sourceTextureSizeInv);
+        float3 history = BicubicSampleCatmullRom(t_FeedbackInput, s_Sampler, sourcePos, g_TemporalAA.outputTextureSizeInv);
 #else
-        float3 history = t_FeedbackInput.SampleLevel(s_Sampler, sourcePos * g_TemporalAA.sourceTextureSizeInv, 0).rgb;
+        float3 history = t_FeedbackInput.SampleLevel(s_Sampler, sourcePos * g_TemporalAA.outputTextureSizeInv, 0).rgb;
 #endif
 
         // Clamp the old color to the new color distribution
@@ -249,7 +262,13 @@ void main(
 
         // Blend the old color with the new color and store output
 
-        resultPQ = lerp(historyClamped, thisPixelColor, g_TemporalAA.newFrameWeight);
+        float motionWeight = smoothstep(0, 1, length(longestMV));
+        float2 distanceToLowResPixel = inputPos - float2(inputPosInt);
+        float upscalingFactor = g_TemporalAA.outputOverInputViewSize.x;
+        float sampleWeight = saturate(1.0 - upscalingFactor * dot(distanceToLowResPixel, distanceToLowResPixel));
+        float blendWeight = saturate(max(motionWeight, sampleWeight) * g_TemporalAA.newFrameWeight);
+
+        resultPQ = lerp(historyClamped, thisPixelColor, blendWeight);
     }
     else
     {
@@ -258,6 +277,6 @@ void main(
 
     float3 result = PQDecode(resultPQ);
 
-    u_ColorOutput[pixelPosition] = float4(result, 1.0);
-    u_FeedbackOutput[pixelPosition] = float4(resultPQ, 0.0);
+    u_ColorOutput[outputPixelPosition] = float4(result, 1.0);
+    u_FeedbackOutput[outputPixelPosition] = float4(resultPQ, 0.0);
 }

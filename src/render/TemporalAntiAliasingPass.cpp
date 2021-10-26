@@ -190,19 +190,18 @@ void TemporalAntiAliasingPass::RenderMotionVectors(
         const IView* view = compositeView.GetChildView(ViewType::PLANAR, viewIndex);
         const IView* viewPrevious = compositeViewPrevious.GetChildView(ViewType::PLANAR, viewIndex);
 
-        nvrhi::ViewportState viewportState = view->GetViewportState();
-        nvrhi::ViewportState prevViewportState = viewPrevious->GetViewportState();
-
+        const nvrhi::ViewportState viewportState = view->GetViewportState();
+        
         // This pass only works for planar, single-viewport views
-        assert(viewportState.viewports.size() == 1 && prevViewportState.viewports.size() == 1);
+        assert(viewportState.viewports.size() == 1);
 
-        const nvrhi::Viewport& prevViewport = prevViewportState.viewports[0];
+        const nvrhi::Viewport& inputViewport = viewportState.viewports[0];
 
         TemporalAntiAliasingConstants taaConstants = {};
         affine3 viewReprojection = inverse(view->GetViewMatrix()) * translation(-preViewTranslationDifference) * viewPrevious->GetViewMatrix();
         taaConstants.reprojectionMatrix = inverse(view->GetProjectionMatrix(false)) * affineToHomogeneous(viewReprojection) * viewPrevious->GetProjectionMatrix(false);
-        taaConstants.previousViewOrigin = float2(prevViewport.minX, prevViewport.minY);
-        taaConstants.previousViewSize = float2(prevViewport.width(), prevViewport.height());
+        taaConstants.inputViewOrigin = float2(inputViewport.minX, inputViewport.minY);
+        taaConstants.inputViewSize = float2(inputViewport.width(), inputViewport.height());
         taaConstants.stencilMask = m_StencilMask;
         commandList->writeBuffer(m_TemporalAntiAliasingCB, &taaConstants, sizeof(taaConstants));
 
@@ -226,48 +225,46 @@ void TemporalAntiAliasingPass::TemporalResolve(
     nvrhi::ICommandList* commandList,
     const TemporalAntiAliasingParameters& params,
     bool feedbackIsValid,
-    const ICompositeView& compositeView,
-    const ICompositeView& compositeViewPrevious)
+    const ICompositeView& compositeViewInput,
+    const ICompositeView& compositeViewOutput)
 {
-    assert(compositeView.GetNumChildViews(ViewType::PLANAR) == compositeViewPrevious.GetNumChildViews(ViewType::PLANAR));
-
+    assert(compositeViewInput.GetNumChildViews(ViewType::PLANAR) == compositeViewOutput.GetNumChildViews(ViewType::PLANAR));
+    
     commandList->beginMarker("TemporalAA");
 
-    for (uint viewIndex = 0; viewIndex < compositeView.GetNumChildViews(ViewType::PLANAR); viewIndex++)
+    for (uint viewIndex = 0; viewIndex < compositeViewInput.GetNumChildViews(ViewType::PLANAR); viewIndex++)
     {
-        const IView* view = compositeView.GetChildView(ViewType::PLANAR, viewIndex);
-        const IView* viewPrevious = compositeViewPrevious.GetChildView(ViewType::PLANAR, viewIndex);
+        const IView* viewInput = compositeViewInput.GetChildView(ViewType::PLANAR, viewIndex);
+        const IView* viewOutput = compositeViewOutput.GetChildView(ViewType::PLANAR, viewIndex);
 
-        nvrhi::ViewportState viewportState = view->GetViewportState();
-        nvrhi::Rect previousExtent = viewPrevious->GetViewExtent();
+        const nvrhi::Viewport viewportInput = viewInput->GetViewportState().viewports[0];
+        const nvrhi::Viewport viewportOutput = viewOutput->GetViewportState().viewports[0];
+        
+        TemporalAntiAliasingConstants taaConstants = {};
+        const float marginSize = 1.f;
+        taaConstants.inputViewOrigin = float2(viewportInput.minX, viewportInput.minY);
+        taaConstants.inputViewSize = float2(viewportInput.width(), viewportInput.height());
+        taaConstants.outputViewOrigin = float2(viewportOutput.minX, viewportOutput.minY);
+        taaConstants.outputViewSize = float2(viewportOutput.width(), viewportOutput.height());
+        taaConstants.inputPixelOffset = viewInput->GetPixelOffset();
+        taaConstants.outputTextureSizeInv = 1.0f / m_ResolvedColorSize;
+        taaConstants.inputOverOutputViewSize = taaConstants.inputViewSize / taaConstants.outputViewSize;
+        taaConstants.outputOverInputViewSize = taaConstants.outputViewSize / taaConstants.inputViewSize;
+        taaConstants.clampingFactor = params.enableHistoryClamping ? params.clampingFactor : -1.f;
+        taaConstants.newFrameWeight = feedbackIsValid ? params.newFrameWeight : 1.f;
+        taaConstants.pqC = dm::clamp(params.maxRadiance, 1e-4f, 1e8f);
+        taaConstants.invPqC = 1.f / taaConstants.pqC;
+        commandList->writeBuffer(m_TemporalAntiAliasingCB, &taaConstants, sizeof(taaConstants));
 
-        for (uint viewportIndex = 0; viewportIndex < viewportState.scissorRects.size(); viewportIndex++)
-        {
-            const nvrhi::Rect& scissorRect = viewportState.scissorRects[viewportIndex];
+        int2 viewportSize = int2(taaConstants.outputViewSize);
+        int2 gridSize = (viewportSize + 15) / 16;
 
-            TemporalAntiAliasingConstants taaConstants = {};
-            int marginSize = 1;
-            taaConstants.previousViewOrigin = float2(float(previousExtent.minX + marginSize), float(previousExtent.minY + marginSize));
-            taaConstants.previousViewSize = float2(float(previousExtent.maxX - previousExtent.minX - marginSize * 2), float(previousExtent.maxY - previousExtent.minY - marginSize * 2));
-            taaConstants.viewOrigin = float2(float(scissorRect.minX), float(scissorRect.minY));
-            taaConstants.viewSize = float2(float(scissorRect.maxX - scissorRect.minX), float(scissorRect.maxY - scissorRect.minY));
-            taaConstants.sourceTextureSizeInv = 1.0f / m_ResolvedColorSize;
-            taaConstants.clampingFactor = params.enableHistoryClamping ? params.clampingFactor : -1.f;
-            taaConstants.newFrameWeight = feedbackIsValid ? params.newFrameWeight : 1.f;
-            taaConstants.pqC = dm::clamp(params.maxRadiance, 1e-4f, 1e8f);
-            taaConstants.invPqC = 1.f / taaConstants.pqC;
-            commandList->writeBuffer(m_TemporalAntiAliasingCB, &taaConstants, sizeof(taaConstants));
+        nvrhi::ComputeState state;
+        state.pipeline = m_ResolvePso;
+        state.bindings = { m_ResolveBindingSet };
+        commandList->setComputeState(state);
 
-            int2 viewportSize = int2(taaConstants.viewSize);
-            int2 gridSize = (viewportSize + 15) / 16;
-
-            nvrhi::ComputeState state;
-            state.pipeline = m_ResolvePso;
-            state.bindings = { m_ResolveBindingSet };
-            commandList->setComputeState(state);
-
-            commandList->dispatch(gridSize.x, gridSize.y, 1);
-        }
+        commandList->dispatch(gridSize.x, gridSize.y, 1);
     }
 
     commandList->endMarker();

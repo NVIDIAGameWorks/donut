@@ -29,7 +29,7 @@ float3 GetMotionVector(float3 svPosition, float3 prevWorldPos, PlanarViewConstan
         return 0;
 
     clipPos.xyz /= clipPos.w;
-    float2 prevWindowPos = clipPos.xy * viewPrev.clipToWindowScale + viewPrev.clipToWindowBias;
+    float2 prevWindowPos = clipPos.xy * view.clipToWindowScale + view.clipToWindowBias;
 
     float3 motion;
     motion.xy = prevWindowPos - svPosition.xy + (view.pixelOffset - viewPrev.pixelOffset);
