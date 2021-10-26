@@ -140,10 +140,20 @@ uint Pack_R16G16_FLOAT(float2 rg)
     return r | g;
 }
 
+uint2 Pack_R16G16B16A16_FLOAT(float4 rgba)
+{
+    return uint2(Pack_R16G16_FLOAT(rgba.rg), Pack_R16G16_FLOAT(rgba.ba));
+}
+
 float2 Unpack_R16G16_FLOAT(uint rg)
 {
     uint2 d = uint2(rg, rg >> 16);
     return f16tof32(d);
+}
+
+float4 Unpack_R16G16B16A16_FLOAT(uint2 rgba)
+{
+    return float4(Unpack_R16G16_FLOAT(rgba.x), Unpack_R16G16_FLOAT(rgba.y));
 }
 
 uint Pack_R8_SNORM(float value)
