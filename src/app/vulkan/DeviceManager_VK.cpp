@@ -760,6 +760,9 @@ bool DeviceManager_VK::createDevice()
         .setEnabledLayerCount(uint32_t(layerVec.size()))
         .setPpEnabledLayerNames(layerVec.data())
         .setPNext(&vulkan12features);
+
+    if (m_DeviceParams.deviceCreateInfoCallback)
+        m_DeviceParams.deviceCreateInfoCallback(deviceDesc);
     
     const vk::Result res = m_VulkanPhysicalDevice.createDevice(&deviceDesc, nullptr, &m_VulkanDevice);
     if (res != vk::Result::eSuccess)
