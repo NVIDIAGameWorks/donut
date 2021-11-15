@@ -85,7 +85,7 @@ void main(in uint i_globalIdx : SV_DispatchThreadID)
 			currentMatrix[1] = asfloat(t_JointMatrices.Load4(index * 64 + 16));
 			currentMatrix[2] = asfloat(t_JointMatrices.Load4(index * 64 + 32));
 			currentMatrix[3] = asfloat(t_JointMatrices.Load4(index * 64 + 48));
-			jointMatrix = currentMatrix * jointWeights[i];
+			jointMatrix += currentMatrix * jointWeights[i];
 		}
 	}
 
