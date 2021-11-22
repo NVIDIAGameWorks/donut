@@ -52,7 +52,6 @@ freely, subject to the following restrictions:
 #include <unordered_set>
 
 #include <donut/app/DeviceManager.h>
-#include <donut/core/log.h>
 
 #include <nvrhi/vulkan.h>
 #include <nvrhi/validation.h>
@@ -365,10 +364,10 @@ bool DeviceManager_VK::createInstance()
         return false;
     }
 
-    log::info("Enabled Vulkan instance extensions:");
+    log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan instance extensions:");
     for (const auto& ext : enabledExtensions.instance)
     {
-        log::info("    %s", ext.c_str());
+        log::message(m_DeviceParams.infoLogSeverity, "    %s", ext.c_str());
     }
 
     std::unordered_set<std::string> requiredLayers = enabledExtensions.layers;
@@ -395,10 +394,10 @@ bool DeviceManager_VK::createInstance()
         return false;
     }
     
-    log::info("Enabled Vulkan layers:");
+    log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan layers:");
     for (const auto& layer : enabledExtensions.layers)
     {
-        log::info("    %s", layer.c_str());
+        log::message(m_DeviceParams.infoLogSeverity, "    %s", layer.c_str());
     }
 
     auto instanceExtVec = stringSetToVector(enabledExtensions.instance);
@@ -664,10 +663,10 @@ bool DeviceManager_VK::createDevice()
     bool meshletsSupported = false;
     bool vrsSupported = false;
 
-    log::info("Enabled Vulkan device extensions:");
+    log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
     for (const auto& ext : enabledExtensions.device)
     {
-        log::info("    %s", ext.c_str());
+        log::message(m_DeviceParams.infoLogSeverity, "    %s", ext.c_str());
 
         if (ext == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
             accelStructSupported = true;
@@ -784,7 +783,7 @@ bool DeviceManager_VK::createDevice()
     auto prop = m_VulkanPhysicalDevice.getProperties();
     m_RendererString = std::string(prop.deviceName.data());
 
-    log::info("Created Vulkan device: %s", m_RendererString.c_str());
+    log::message(m_DeviceParams.infoLogSeverity, "Created Vulkan device: %s", m_RendererString.c_str());
 
     return true;
 }

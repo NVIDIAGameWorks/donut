@@ -183,7 +183,7 @@ std::shared_ptr<IBlob> TextureCache::ReadTextureFile(const std::filesystem::path
     auto fileData = m_fs->readFile(path);
 
     if (!fileData)
-        log::warning("Couldn't read texture file '%s'", path.generic_string().c_str());
+        log::message(m_ErrorLogSeverity, "Couldn't read texture file '%s'", path.generic_string().c_str());
 
     return fileData;
 }
@@ -201,7 +201,7 @@ bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, 
         if (!LoadDDSTextureFromMemory(*texture))
         {
             texture->data = nullptr;
-            log::warning("Couldn't load DDS texture '%s'", texture->path.c_str());
+            log::message(m_ErrorLogSeverity, "Couldn't load DDS texture '%s'", texture->path.c_str());
             return false;
         }
     }
@@ -253,7 +253,7 @@ bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, 
             static_cast<int>(fileData->size()), 
             &width, &height, &originalChannels))
         {
-            log::warning("Couldn't process image header for texture '%s'", texture->path.c_str());
+            log::message(m_ErrorLogSeverity, "Couldn't process image header for texture '%s'", texture->path.c_str());
             return false;
         }
 
@@ -291,7 +291,7 @@ bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, 
 
         if (!bitmap)
         {
-            log::warning("Couldn't load generic texture '%s'", texture->path.c_str());
+            log::message(m_ErrorLogSeverity, "Couldn't load generic texture '%s'", texture->path.c_str());
             return false;
         }
 
@@ -325,7 +325,7 @@ bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, 
         default:
             texture->data.reset(); // release the bitmap data
 
-            log::warning("Unsupported number of components (%d) for texture '%s'", channels, texture->path.c_str());
+            log::message(m_ErrorLogSeverity, "Unsupported number of components (%d) for texture '%s'", channels, texture->path.c_str());
             return false;
         }
     }
@@ -482,10 +482,9 @@ void TextureCache::TextureLoaded(std::shared_ptr<TextureData> texture)
     std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
 
     if (texture->mimeType.empty())
-        log::info("Loaded %d x %d, %d bpp: %s", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str());
+        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str());
     else
-        log::info("Loaded %d x %d, %d bpp: %s (%s)", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str(), texture->mimeType.c_str());
-
+        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s (%s)", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str(), texture->mimeType.c_str());
 }
 
 std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::filesystem::path& path, bool sRGB, CommonRenderPasses* passes, nvrhi::ICommandList* commandList)

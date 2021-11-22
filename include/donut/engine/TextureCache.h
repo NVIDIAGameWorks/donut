@@ -23,6 +23,7 @@
 #pragma once
 
 #include <donut/engine/SceneTypes.h>
+#include <donut/core/log.h>
 
 #include <nvrhi/nvrhi.h>
 #include <atomic>
@@ -93,6 +94,9 @@ namespace donut::engine
 
         bool m_GenerateMipmaps = true;
 
+        log::Severity m_InfoLogSeverity = log::Severity::Info;
+        log::Severity m_ErrorLogSeverity = log::Severity::Warning;
+
         std::atomic<uint32_t> m_TexturesRequested = 0;
         std::atomic<uint32_t> m_TexturesLoaded = 0;
         uint32_t m_TexturesFinalized = 0;
@@ -161,6 +165,12 @@ namespace donut::engine
 
         // Enables or disables automatic mip generation for loaded textures.
         void SetGenerateMipmaps(bool generateMipmaps);
+
+        // Sets the Severity of log messages about textures being loaded.
+        void SetInfoLogSeverity(log::Severity value) { m_InfoLogSeverity = value; }
+
+        // Sets the Severity of log messages about textures that couldn't be loaded.
+        void SetErrorLogSeverity(log::Severity value) { m_ErrorLogSeverity = value; }
 
         uint32_t GetNumberOfLoadedTextures() { return m_TexturesLoaded.load(); }
         uint32_t GetNumberOfRequestedTextures() { return m_TexturesRequested.load(); }

@@ -72,6 +72,7 @@ freely, subject to the following restrictions:
 #endif // _WIN32
 #include <GLFW/glfw3native.h>
 #include <nvrhi/nvrhi.h>
+#include <donut/core/log.h>
 
 #include <list>
 #include <functional>
@@ -106,6 +107,9 @@ namespace donut::app
         bool enableRayTracingExtensions = false; // for vulkan
         bool enableComputeQueue = false;
         bool enableCopyQueue = false;
+
+        // Severity of the information log messages from the device manager, like the device name or enabled extensions.
+        log::Severity infoLogSeverity = log::Severity::Info;
 
 #if USE_DX11 || USE_DX12
         // Adapter to create the device on. Setting this to non-null overrides adapterNameSubstring.
