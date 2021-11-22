@@ -42,6 +42,7 @@ namespace donut::log
         const char* severityText = "";
         switch (severity)
         {
+        case Severity::Debug: severityText = "DEBUG";  break;
         case Severity::Info: severityText = "INFO";  break;
         case Severity::Warning: severityText = "WARNING"; break;
         case Severity::Error: severityText = "ERROR"; break;
@@ -112,6 +113,21 @@ namespace donut::log
         vsnprintf(buffer, std::size(buffer), fmt, args);
 
         g_Callback(severity, buffer);
+
+        va_end(args);
+    }
+
+    void debug(const char* fmt...)
+    {
+        if (static_cast<int>(g_MinSeverity) > static_cast<int>(Severity::Debug))
+            return;
+
+        char buffer[g_MessageBufferSize];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(buffer, std::size(buffer), fmt, args);
+
+        g_Callback(Severity::Debug, buffer);
 
         va_end(args);
     }

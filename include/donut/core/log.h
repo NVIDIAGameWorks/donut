@@ -28,7 +28,8 @@ namespace donut::log
 {
     enum class Severity
     {
-		None = 0,
+        None = 0,
+        Debug,
         Info,
         Warning,
         Error,
@@ -44,6 +45,7 @@ namespace donut::log
     void SetErrorMessageCaption(const char* caption);
 
     void message(Severity severity, const char* fmt...);
+    void debug(const char* fmt...);
     void info(const char* fmt...);
     void warning(const char* fmt...);
     void error(const char* fmt...);
