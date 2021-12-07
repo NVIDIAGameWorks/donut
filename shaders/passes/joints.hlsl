@@ -26,7 +26,7 @@
 
 // simple line drawing shader for the joints render pass
 
-cbuffer c_Constants : register(b0 VK_DESCRIPTOR_SET(1))
+cbuffer c_Constants : register(b0 VK_DESCRIPTOR_SET(0))
 {
     PlanarViewConstants g_Constants;
 };
