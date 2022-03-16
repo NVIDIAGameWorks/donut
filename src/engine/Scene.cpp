@@ -1210,6 +1210,7 @@ void Scene::UpdateInstance(const std::shared_ptr<MeshInstance>& instance)
     affineToColumnMajor(node->GetPrevLocalToWorldTransformFloat(), idata.prevTransform);
 
     const auto& mesh = instance->GetMesh();
+    idata.firstGeometryInstanceIndex = instance->GetGeometryInstanceIndex();
     idata.firstGeometryIndex = mesh->geometries[0]->globalGeometryIndex;
     idata.numGeometries = uint32_t(mesh->geometries.size());
     idata.padding = 0u;

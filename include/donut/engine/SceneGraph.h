@@ -82,6 +82,7 @@ namespace donut::engine
     private:
         friend class SceneGraph;
         int m_InstanceIndex = -1;
+        int m_GeometryInstanceIndex = -1;
 
     protected:
         std::shared_ptr<MeshInfo> m_Mesh;
@@ -93,6 +94,7 @@ namespace donut::engine
 
         [[nodiscard]] const std::shared_ptr<MeshInfo>& GetMesh() const { return m_Mesh; }
         [[nodiscard]] int GetInstanceIndex() const { return m_InstanceIndex; }
+        [[nodiscard]] int GetGeometryInstanceIndex() const { return m_GeometryInstanceIndex; }
         [[nodiscard]] dm::box3 GetLocalBoundingBox() override { return m_Mesh->objectSpaceBounds; }
         [[nodiscard]] std::shared_ptr<SceneGraphLeaf> Clone() override;
         [[nodiscard]] SceneContentFlags GetContentFlags() const override;
@@ -523,6 +525,7 @@ namespace donut::engine
         ResourceTracker<Material> m_Materials;
         ResourceTracker<MeshInfo> m_Meshes;
         size_t m_GeometryCount = 0;
+        size_t m_GeometryInstancesCount = 0;
         std::vector<std::shared_ptr<MeshInstance>> m_MeshInstances;
         std::vector<std::shared_ptr<SkinnedMeshInstance>> m_SkinnedMeshInstances;
         std::vector<std::shared_ptr<SceneGraphAnimation>> m_Animations;
@@ -546,6 +549,7 @@ namespace donut::engine
         [[nodiscard]] const ResourceTracker<Material>& GetMaterials() const { return m_Materials; }
         [[nodiscard]] const ResourceTracker<MeshInfo>& GetMeshes() const { return m_Meshes; }
         [[nodiscard]] const size_t GetGeometryCount() const { return m_GeometryCount; }
+        [[nodiscard]] const size_t GetGeometryInstancesCount() const { return m_GeometryInstancesCount; }
         [[nodiscard]] const std::vector<std::shared_ptr<MeshInstance>>& GetMeshInstances() const { return m_MeshInstances; }
         [[nodiscard]] const std::vector<std::shared_ptr<SkinnedMeshInstance>>& GetSkinnedMeshInstances() const { return m_SkinnedMeshInstances; }
         [[nodiscard]] const std::vector<std::shared_ptr<SceneGraphAnimation>>& GetAnimations() const { return m_Animations; }

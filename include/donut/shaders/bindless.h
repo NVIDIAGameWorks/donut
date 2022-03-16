@@ -46,8 +46,13 @@ struct GeometryData
 
 struct InstanceData
 {
-    uint2 padding;
-    uint firstGeometryIndex;
+    uint padding;
+    uint firstGeometryInstanceIndex; // index into global list of geometry instances. 
+                                     // foreach (Instance)
+                                     //     foreach(Geo) index++
+    uint firstGeometryIndex;         // index into global list of geometries. 
+                                     // foreach(Mesh)
+                                     //     foreach(Geo) index++
     uint numGeometries;
 
     float3x4 transform;
@@ -96,7 +101,8 @@ InstanceData LoadInstanceData(ByteAddressBuffer buffer, uint offset)
     uint4 g = buffer.Load4(offset + 16 * 6);
 
     InstanceData ret;
-    ret.padding = a.xy;
+    ret.padding = a.x;
+    ret.firstGeometryInstanceIndex = a.y;
     ret.firstGeometryIndex = a.z;
     ret.numGeometries = a.w;
     ret.transform = float3x4(asfloat(b), asfloat(c), asfloat(d));

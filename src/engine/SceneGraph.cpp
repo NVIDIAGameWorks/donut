@@ -1089,11 +1089,17 @@ void SceneGraph::Refresh(uint32_t frameIndex)
     if (structureDirty)
     {
         int instanceIndex = 0;
+        int geometryInstanceIndex = 0;
         for (const auto& instance : m_MeshInstances)
         {
             instance->m_InstanceIndex = instanceIndex;
             ++instanceIndex;
+
+            const auto& mesh = instance->GetMesh();
+            instance->m_GeometryInstanceIndex = geometryInstanceIndex;
+            geometryInstanceIndex += int(mesh->geometries.size());
         }
+        m_GeometryInstancesCount = geometryInstanceIndex;
 
         int meshIndex = 0;
         int geometryIndex = 0;
