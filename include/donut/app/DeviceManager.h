@@ -101,6 +101,7 @@ namespace donut::app
         uint32_t swapChainSampleCount = 1;
         uint32_t swapChainSampleQuality = 0;
         uint32_t maxFramesInFlight = 2;
+        bool requestHighPerformanceGpu = false;
         bool enableDebugRuntime = false;
         bool enableNvrhiValidationLayer = false;
         bool vsyncEnabled = false;
