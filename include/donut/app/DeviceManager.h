@@ -265,6 +265,8 @@ namespace donut::app
         virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const { }
         virtual void GetEnabledVulkanLayers(std::vector<std::string>& layers) const { }
 
+        std::function<void(DeviceManager&)> m_OnFrameStart = nullptr;
+
     private:
         static DeviceManager* CreateD3D11();
         static DeviceManager* CreateD3D12();
