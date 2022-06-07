@@ -425,6 +425,10 @@ void DeviceManager::RunMessageLoop()
 
     while(!glfwWindowShouldClose(m_Window))
     {
+
+        if (m_OnFrameStart != nullptr) 
+            m_OnFrameStart(*this);
+
         glfwPollEvents();
 
         UpdateWindowSize();

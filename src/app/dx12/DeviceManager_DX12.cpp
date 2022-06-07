@@ -65,9 +65,6 @@ freely, subject to the following restrictions:
 
 #include <sstream>
 
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;

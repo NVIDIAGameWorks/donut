@@ -61,9 +61,6 @@ freely, subject to the following restrictions:
 #include <nvrhi/d3d11.h>
 #include <nvrhi/validation.h>
 
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;
