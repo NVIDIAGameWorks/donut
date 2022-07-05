@@ -633,6 +633,40 @@ namespace donut::engine
                 return false;
             }
 
+            // Apply the forceSRGB flag and promote various compatible formats to sRGB
+            if (textureInfo.forceSRGB)
+            {
+                switch (textureInfo.format)  // NOLINT(clang-diagnostic-switch-enum)
+                {
+                case(nvrhi::Format::RGBA8_UNORM):
+                    textureInfo.format = nvrhi::Format::SRGBA8_UNORM;
+                    break;
+
+                case(nvrhi::Format::BGRA8_UNORM):
+                    textureInfo.format = nvrhi::Format::SBGRA8_UNORM;
+                    break;
+
+                case(nvrhi::Format::BC1_UNORM):
+                    textureInfo.format = nvrhi::Format::BC1_UNORM_SRGB;
+                    break;
+
+                case(nvrhi::Format::BC2_UNORM):
+                    textureInfo.format = nvrhi::Format::BC2_UNORM_SRGB;
+                    break;
+
+                case(nvrhi::Format::BC3_UNORM):
+                    textureInfo.format = nvrhi::Format::BC3_UNORM_SRGB;
+                    break;
+
+                case(nvrhi::Format::BC7_UNORM):
+                    textureInfo.format = nvrhi::Format::BC7_UNORM_SRGB;
+                    break;
+
+                default:
+                    break;
+                }
+            }
+
             switch (d3d10ext->resourceDimension)
             {
             case DDS_DIMENSION_TEXTURE1D:
