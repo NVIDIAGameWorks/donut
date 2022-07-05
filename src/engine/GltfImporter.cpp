@@ -219,6 +219,10 @@ bool GltfImporter::Load(
     // Patched buffers will be saved alongside the gltf file, named like "<scene-name>.buffer<N>.bin"
     constexpr bool c_ForceRebuildTangents = false;
 
+    // Search for a matching .dds file first if loading an uncompressed texture like .png,
+    // even if the DDS is not specified in the glTF file.
+    constexpr bool c_SearchForDds = true;
+
     result.rootNode.reset();
 
     cgltf_vfs_context vfsContext;
@@ -248,7 +252,7 @@ bool GltfImporter::Load(
 
     std::unordered_map<const cgltf_image*, std::shared_ptr<LoadedTexture>> textures;
 
-    auto load_texture = [&textures, &textureCache, executor, &fileName, objects, &vfsContext](const cgltf_texture* texture, bool sRGB)
+    auto load_texture = [this, &textures, &textureCache, executor, &fileName, objects, &vfsContext, c_SearchForDds](const cgltf_texture* texture, bool sRGB)
     {
         if (!texture)
             return std::shared_ptr<LoadedTexture>(nullptr);
@@ -316,13 +320,25 @@ bool GltfImporter::Load(
         else
         {
             // No inline data - read a file.
+            std::filesystem::path filePath = fileName.parent_path() / activeImage->uri;
+
+            // Try to replace the texture with DDS, if enabled.
+            if (c_SearchForDds && !ddsImage)
+            {
+                std::filesystem::path filePathDDS = filePath;
+
+                filePathDDS.replace_extension(".dds");
+
+                if (m_fs->fileExists(filePathDDS))
+                    filePath = filePathDDS;
+            }
 
 #ifdef DONUT_WITH_TASKFLOW
             if (executor)
-                loadedTexture = textureCache.LoadTextureFromFileAsync(fileName.parent_path() / activeImage->uri, sRGB, *executor);
+                loadedTexture = textureCache.LoadTextureFromFileAsync(filePath, sRGB, *executor);
             else
 #endif
-                loadedTexture = textureCache.LoadTextureFromFileDeferred(fileName.parent_path() / activeImage->uri, sRGB);
+                loadedTexture = textureCache.LoadTextureFromFileDeferred(filePath, sRGB);
         }
         textures[activeImage] = loadedTexture;
         return loadedTexture;
