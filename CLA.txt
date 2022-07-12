@@ -125,12 +125,12 @@ for Your present and future Submissions to NVIDIA.
 ___ I have sole ownership of intellectual property rights to my Submissions
 and I am not making Submissions in the course of work for my employer.
 
-Name ("You"): _________________________________________
-Signature:    _________________________________________
-Date:         _________________________________________
-GitHub Login: _________________________________________
-Email:        _________________________________________
-Address:      _________________________________________
+Name ("You"): Wang Yonghong _________________________________________
+Signature:    Wang Yonghong _________________________________________
+Date:         June 8th, 2022 _________________________________________
+GitHub Login: HuazyYang _________________________________________
+Email:        mt_xxx2007@sina.com, wangyonghong@joyy.com _________________________________________
+Address:      Wangda square, build No.2, Pangyu district, Guangzhou province, China. _________________________________________
 
 
 ___ I am making Submissions in the course of work for my employer (or my
