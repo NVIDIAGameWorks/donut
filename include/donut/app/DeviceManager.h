@@ -265,7 +265,15 @@ namespace donut::app
         virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const { }
         virtual void GetEnabledVulkanLayers(std::vector<std::string>& layers) const { }
 
-        std::function<void(DeviceManager&)> m_OnFrameStart = nullptr;
+        struct PipelineCallbacks {
+            std::function<void(DeviceManager&)> beforeFrame = nullptr;
+            std::function<void(DeviceManager&)> beforeAnimate = nullptr;
+            std::function<void(DeviceManager&)> afterAnimate = nullptr;
+            std::function<void(DeviceManager&)> beforeRender = nullptr;
+            std::function<void(DeviceManager&)> afterRender = nullptr;
+            std::function<void(DeviceManager&)> beforePresent = nullptr;
+            std::function<void(DeviceManager&)> afterPresent = nullptr;
+        } m_callbacks;
 
     private:
         static DeviceManager* CreateD3D11();
