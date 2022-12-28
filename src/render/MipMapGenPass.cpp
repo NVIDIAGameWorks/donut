@@ -51,6 +51,7 @@ static nvrhi::TextureHandle createNullTexture(nvrhi::DeviceHandle device)
     desc.useClearValue = false;
     desc.sampleCount = 1;
     desc.dimension = nvrhi::TextureDimension::Texture2D;
+    desc.initialState = nvrhi::ResourceStates::UnorderedAccess;
     desc.keepInitialState = true;
     desc.arraySize = 1;
     desc.isUAV = true;
@@ -111,12 +112,13 @@ MipMapGenPass::MipMapGenPass(
     constantBufferDesc.isConstantBuffer = true;
     constantBufferDesc.isVolatile = true;
     constantBufferDesc.debugName = "MipMapGenPass/Constants";
+    constantBufferDesc.maxVersions = c_MaxRenderPassConstantBufferVersions;
     m_ConstantBuffer = m_Device->createBuffer(constantBufferDesc);
 
     // BindingLayout
     nvrhi::BindingLayoutDesc layoutDesc;
     layoutDesc.visibility = nvrhi::ShaderType::Compute;
-    layoutDesc.bindings.push_back(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)),
+    layoutDesc.bindings.push_back(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
     layoutDesc.bindings.push_back(nvrhi::BindingLayoutItem::Texture_SRV(0));
     for (uint mipLevel = 1; mipLevel <= NUM_LODS; ++mipLevel)
     {   
