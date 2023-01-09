@@ -251,6 +251,8 @@ private:
     std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
     std::vector<nvrhi::EventQueryHandle> m_QueryPool;
 
+    bool m_BufferDeviceAddressSupported = false;
+
 private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(
         VkDebugReportFlagsEXT flags,
@@ -657,7 +659,6 @@ bool DeviceManager_VK::createDevice()
     }
 
     bool accelStructSupported = false;
-    bool bufferAddressSupported = false;
     bool rayPipelineSupported = false;
     bool rayQuerySupported = false;
     bool meshletsSupported = false;
@@ -670,8 +671,6 @@ bool DeviceManager_VK::createDevice()
 
         if (ext == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
             accelStructSupported = true;
-        else if (ext == VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)
-            bufferAddressSupported = true;
         else if (ext == VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
             rayPipelineSupported = true;
         else if (ext == VK_KHR_RAY_QUERY_EXTENSION_NAME)
@@ -694,6 +693,7 @@ bool DeviceManager_VK::createDevice()
 
     float priority = 1.f;
     std::vector<vk::DeviceQueueCreateInfo> queueDesc;
+    queueDesc.reserve(uniqueQueueFamilies.size());
     for(int queueFamily : uniqueQueueFamilies)
     {
         queueDesc.push_back(vk::DeviceQueueCreateInfo()
@@ -704,8 +704,6 @@ bool DeviceManager_VK::createDevice()
 
     auto accelStructFeatures = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
         .setAccelerationStructure(true);
-    auto bufferAddressFeatures = vk::PhysicalDeviceBufferAddressFeaturesEXT()
-        .setBufferDeviceAddress(true);
     auto rayPipelineFeatures = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
         .setRayTracingPipeline(true)
         .setRayTraversalPrimitiveCulling(true);
@@ -722,12 +720,17 @@ bool DeviceManager_VK::createDevice()
     void* pNext = nullptr;
 #define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }  // NOLINT(cppcoreguidelines-macro-usage)
     APPEND_EXTENSION(accelStructSupported, accelStructFeatures)
-    APPEND_EXTENSION(bufferAddressSupported, bufferAddressFeatures)
     APPEND_EXTENSION(rayPipelineSupported, rayPipelineFeatures)
     APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
     APPEND_EXTENSION(meshletsSupported, meshletFeatures)
     APPEND_EXTENSION(vrsSupported, vrsFeatures)
 #undef APPEND_EXTENSION
+
+    // Determine support for Buffer Device Address, the Vulkan 1.2 way
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2;
+    vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures;
+    physicalDeviceFeatures2.pNext = &bufferDeviceAddressFeatures;
+    m_VulkanPhysicalDevice.getFeatures2(&physicalDeviceFeatures2);
 
     auto deviceFeatures = vk::PhysicalDeviceFeatures()
         .setShaderImageGatherExtended(true)
@@ -745,7 +748,7 @@ bool DeviceManager_VK::createDevice()
         .setDescriptorBindingVariableDescriptorCount(true)
         .setTimelineSemaphore(true)
         .setShaderSampledImageArrayNonUniformIndexing(true)
-        .setBufferDeviceAddress(bufferAddressSupported)
+        .setBufferDeviceAddress(bufferDeviceAddressFeatures.bufferDeviceAddress)
         .setPNext(pNext);
 
     auto layerVec = stringSetToVector(enabledExtensions.layers);
@@ -783,6 +786,9 @@ bool DeviceManager_VK::createDevice()
     // stash the renderer string
     auto prop = m_VulkanPhysicalDevice.getProperties();
     m_RendererString = std::string(prop.deviceName.data());
+
+    // remember the bufferDeviceAddress feature enablement
+    m_BufferDeviceAddressSupported = vulkan12features.bufferDeviceAddress;
 
     log::message(m_DeviceParams.infoLogSeverity, "Created Vulkan device: %s", m_RendererString.c_str());
 
@@ -952,6 +958,7 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain()
     deviceDesc.numInstanceExtensions = vecInstanceExt.size();
     deviceDesc.deviceExtensions = vecDeviceExt.data();
     deviceDesc.numDeviceExtensions = vecDeviceExt.size();
+    deviceDesc.bufferDeviceAddressSupported = m_BufferDeviceAddressSupported;
 
     m_NvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
 
