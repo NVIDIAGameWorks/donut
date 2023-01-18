@@ -199,7 +199,8 @@ private:
             VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
             VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
             VK_NV_MESH_SHADER_EXTENSION_NAME,
-            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME
+            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
         },
     };
 
@@ -658,11 +659,15 @@ bool DeviceManager_VK::createDevice()
         }
     }
 
+    const vk::PhysicalDeviceProperties physicalDeviceProperties = m_VulkanPhysicalDevice.getProperties();
+    m_RendererString = std::string(physicalDeviceProperties.deviceName.data());
+
     bool accelStructSupported = false;
     bool rayPipelineSupported = false;
     bool rayQuerySupported = false;
     bool meshletsSupported = false;
     bool vrsSupported = false;
+    bool synchronization2Supported = false;
 
     log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
     for (const auto& ext : enabledExtensions.device)
@@ -679,6 +684,8 @@ bool DeviceManager_VK::createDevice()
             meshletsSupported = true;
         else if (ext == VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME)
             vrsSupported = true;
+        else if (ext == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+            synchronization2Supported = true;
     }
 
     std::unordered_set<int> uniqueQueueFamilies = {
@@ -716,7 +723,9 @@ bool DeviceManager_VK::createDevice()
         .setPipelineFragmentShadingRate(true)
         .setPrimitiveFragmentShadingRate(true)
         .setAttachmentFragmentShadingRate(true);
-
+    auto vulkan13features = vk::PhysicalDeviceVulkan13Features()
+        .setSynchronization2(synchronization2Supported);
+    
     void* pNext = nullptr;
 #define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }  // NOLINT(cppcoreguidelines-macro-usage)
     APPEND_EXTENSION(accelStructSupported, accelStructFeatures)
@@ -724,6 +733,7 @@ bool DeviceManager_VK::createDevice()
     APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
     APPEND_EXTENSION(meshletsSupported, meshletFeatures)
     APPEND_EXTENSION(vrsSupported, vrsFeatures)
+    APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
 #undef APPEND_EXTENSION
 
     // Determine support for Buffer Device Address, the Vulkan 1.2 way
@@ -782,10 +792,6 @@ bool DeviceManager_VK::createDevice()
     m_VulkanDevice.getQueue(m_PresentQueueFamily, 0, &m_PresentQueue);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_VulkanDevice);
-
-    // stash the renderer string
-    auto prop = m_VulkanPhysicalDevice.getProperties();
-    m_RendererString = std::string(prop.deviceName.data());
 
     // remember the bufferDeviceAddress feature enablement
     m_BufferDeviceAddressSupported = vulkan12features.bufferDeviceAddress;
