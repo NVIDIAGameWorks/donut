@@ -200,7 +200,8 @@ private:
             VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
             VK_NV_MESH_SHADER_EXTENSION_NAME,
             VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
+            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE_4_EXTENSION_NAME
         },
     };
 
@@ -405,11 +406,37 @@ bool DeviceManager_VK::createInstance()
 
     auto instanceExtVec = stringSetToVector(enabledExtensions.instance);
     auto layerVec = stringSetToVector(enabledExtensions.layers);
+    
+    auto applicationInfo = vk::ApplicationInfo();
 
-    auto applicationInfo = vk::ApplicationInfo()
-        .setApiVersion(VK_MAKE_VERSION(1, 2, 0));
+    // Query the Vulkan API version supported on the system to make sure we use at least 1.3 when that's present.
+    vk::Result res = vk::enumerateInstanceVersion(&applicationInfo.apiVersion);
 
-    // create the vulkan instance
+    if (res != vk::Result::eSuccess)
+    {
+        log::error("Call to vkEnumerateInstanceVersion failed, error code = %s", nvrhi::vulkan::resultToString(res));
+        return false;
+    }
+
+    const uint32_t minimumVulkanVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
+
+    // Check if the Vulkan API version is sufficient.
+    if (applicationInfo.apiVersion < minimumVulkanVersion)
+    {
+        log::error("The Vulkan API version supported on the system (%d.%d.%d) is too low, at least %d.%d.%d is required.",
+            VK_API_VERSION_MAJOR(applicationInfo.apiVersion), VK_API_VERSION_MINOR(applicationInfo.apiVersion), VK_API_VERSION_PATCH(applicationInfo.apiVersion),
+            VK_API_VERSION_MAJOR(minimumVulkanVersion), VK_API_VERSION_MINOR(minimumVulkanVersion), VK_API_VERSION_PATCH(minimumVulkanVersion));
+        return false;
+    }
+
+    // Spec says: A non-zero variant indicates the API is a variant of the Vulkan API and applications will typically need to be modified to run against it.
+    if (VK_API_VERSION_VARIANT(applicationInfo.apiVersion) != 0)
+    {
+        log::error("The Vulkan API supported on the system uses an unexpected variant: %d.", VK_API_VERSION_VARIANT(applicationInfo.apiVersion));
+        return false;
+    }
+
+    // Create the vulkan instance
     vk::InstanceCreateInfo info = vk::InstanceCreateInfo()
         .setEnabledLayerCount(uint32_t(layerVec.size()))
         .setPpEnabledLayerNames(layerVec.data())
@@ -417,7 +444,7 @@ bool DeviceManager_VK::createInstance()
         .setPpEnabledExtensionNames(instanceExtVec.data())
         .setPApplicationInfo(&applicationInfo);
 
-    const vk::Result res = vk::createInstance(&info, nullptr, &m_VulkanInstance);
+    res = vk::createInstance(&info, nullptr, &m_VulkanInstance);
     if (res != vk::Result::eSuccess)
     {
         log::error("Failed to create a Vulkan instance, error code = %s", nvrhi::vulkan::resultToString(res));
@@ -668,6 +695,7 @@ bool DeviceManager_VK::createDevice()
     bool meshletsSupported = false;
     bool vrsSupported = false;
     bool synchronization2Supported = false;
+    bool maintenance4Supported = false;
 
     log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
     for (const auto& ext : enabledExtensions.device)
@@ -686,7 +714,24 @@ bool DeviceManager_VK::createDevice()
             vrsSupported = true;
         else if (ext == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
             synchronization2Supported = true;
+        else if (ext == VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
+            maintenance4Supported = true;
     }
+
+#define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }  // NOLINT(cppcoreguidelines-macro-usage)
+    void* pNext = nullptr;
+
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2;
+    // Determine support for Buffer Device Address, the Vulkan 1.2 way
+    auto bufferDeviceAddressFeatures = vk::PhysicalDeviceBufferDeviceAddressFeatures();
+    // Determine support for maintenance4
+    auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features();
+
+    APPEND_EXTENSION(true, bufferDeviceAddressFeatures);
+    APPEND_EXTENSION(maintenance4Supported, maintenance4Features);
+
+    physicalDeviceFeatures2.pNext = pNext;
+    m_VulkanPhysicalDevice.getFeatures2(&physicalDeviceFeatures2);
 
     std::unordered_set<int> uniqueQueueFamilies = {
         m_GraphicsQueueFamily,
@@ -724,23 +769,18 @@ bool DeviceManager_VK::createDevice()
         .setPrimitiveFragmentShadingRate(true)
         .setAttachmentFragmentShadingRate(true);
     auto vulkan13features = vk::PhysicalDeviceVulkan13Features()
-        .setSynchronization2(synchronization2Supported);
-    
-    void* pNext = nullptr;
-#define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }  // NOLINT(cppcoreguidelines-macro-usage)
+        .setSynchronization2(synchronization2Supported)
+        .setMaintenance4(maintenance4Features.maintenance4);
+
+    pNext = nullptr;
     APPEND_EXTENSION(accelStructSupported, accelStructFeatures)
     APPEND_EXTENSION(rayPipelineSupported, rayPipelineFeatures)
     APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
     APPEND_EXTENSION(meshletsSupported, meshletFeatures)
     APPEND_EXTENSION(vrsSupported, vrsFeatures)
     APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
+    APPEND_EXTENSION(physicalDeviceProperties.apiVersion < VK_API_VERSION_1_3 && maintenance4Supported, maintenance4Features);
 #undef APPEND_EXTENSION
-
-    // Determine support for Buffer Device Address, the Vulkan 1.2 way
-    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2;
-    vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures;
-    physicalDeviceFeatures2.pNext = &bufferDeviceAddressFeatures;
-    m_VulkanPhysicalDevice.getFeatures2(&physicalDeviceFeatures2);
 
     auto deviceFeatures = vk::PhysicalDeviceFeatures()
         .setShaderImageGatherExtended(true)
