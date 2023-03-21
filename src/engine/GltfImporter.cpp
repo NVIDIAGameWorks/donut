@@ -319,8 +319,12 @@ bool GltfImporter::Load(
         }
         else
         {
+            // Decode %-encoded characters in the URI, because cgltf doesn't do that for some reason.
+            std::string uri = activeImage->uri;
+            cgltf_decode_uri(uri.data());
+
             // No inline data - read a file.
-            std::filesystem::path filePath = fileName.parent_path() / activeImage->uri;
+            std::filesystem::path filePath = fileName.parent_path() / uri;
 
             // Try to replace the texture with DDS, if enabled.
             if (c_SearchForDds && !ddsImage)
