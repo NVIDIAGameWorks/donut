@@ -47,10 +47,6 @@ target_compile_definitions(donut_app PUBLIC USE_DX12=1)
 target_link_libraries(donut_app nvrhi_d3d12 d3d11 dxgi)
 endif()
 
-if(DONUT_USE_DXIL_ON_DX12)
-target_compile_definitions(donut_app PRIVATE DONUT_USE_DXIL_ON_DX12=1)
-endif()
-
 if(DONUT_WITH_VULKAN)
 target_sources(donut_app PRIVATE src/app/vulkan/DeviceManager_VK.cpp)
 target_compile_definitions(donut_app PUBLIC USE_VK=1)

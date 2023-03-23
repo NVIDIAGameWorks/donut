@@ -158,16 +158,10 @@ const char* donut::app::GetShaderTypeName(nvrhi::GraphicsAPI api)
 {
     switch (api)
     {
-#if DONUT_USE_DXIL_ON_DX12
     case nvrhi::GraphicsAPI::D3D11:
         return "dxbc";
     case nvrhi::GraphicsAPI::D3D12:
         return "dxil";
-#else
-    case nvrhi::GraphicsAPI::D3D11:
-    case nvrhi::GraphicsAPI::D3D12:
-        return "dxbc";
-#endif
     case nvrhi::GraphicsAPI::VULKAN:
         return "spirv";
     default:
