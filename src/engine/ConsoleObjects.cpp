@@ -25,6 +25,7 @@
 #include <donut/core/string_utils.h>
 
 #include <cassert>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>

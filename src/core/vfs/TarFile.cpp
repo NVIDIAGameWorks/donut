@@ -24,6 +24,7 @@
 #include <donut/core/log.h>
 #include <sstream>
 #include <regex>
+#include <cstring>
 
 #ifdef WIN32
 #define fseeko _fseeki64

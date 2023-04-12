@@ -21,6 +21,7 @@
 */
 
 #include <donut/core/string_utils.h>
+#include <cstring>
 
 namespace donut::string_utils
 {
