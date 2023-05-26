@@ -502,7 +502,7 @@ void SceneGraphAnimation::AddChannel(const std::shared_ptr<SceneGraphAnimationCh
 
 bool SceneGraphAnimation::Apply(float time) const
 {
-    bool success = false;
+    bool success = true;
 
     for (const auto& channel : m_Channels)
     {
