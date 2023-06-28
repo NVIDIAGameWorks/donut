@@ -60,10 +60,13 @@ namespace donut::vfs
         [[nodiscard]] virtual const void* data() const = 0;
         [[nodiscard]] virtual size_t size() const = 0;
 
-		static bool IsEmpty(IBlob const& blob)
-		{
-			return blob.data() != nullptr && blob.size() != 0;
-		}
+        // Returns true if the provided blob contains no data.
+        // Note: the previous version of this function was called IsEmpty (capital I)
+        // and it returned the inverse of what it was supposed to.
+        static bool isEmpty(IBlob const* blob)
+        {
+            return blob == nullptr || blob->data() == nullptr || blob->size() == 0;
+        }
     };
 
     // Specific blob implementation that owns the data and frees it when deleted.
