@@ -110,7 +110,7 @@ void test_console_variables()
 
 		pvar->SetFloat3(value);
 		CHECK(all(pvar->GetFloat3() == value));
-		CHECK(pvar->GetValueAsString() == "0.1 0.2 0.3");
+		CHECK(pvar->GetValueAsString() == "0.100000 0.200000 0.300000");
 
 		// read-only
 		std::pair<donut::log::Severity, std::string> err;
@@ -208,7 +208,7 @@ void test_ini()
 	cvarInt3 fooInt32("fooInt32", "foo int var 2", int3());
 	cvarInt3 fooInt33("fooInt33", "foo int var 3", int3());
 
-	cvarFloat3 fooFloat31("fooFloat31", "foo float3 var 1", int3(0, 0, 0));
+	cvarFloat3 fooFloat31("fooFloat31", "foo float3 var 1", float3(0, 0, 0));
 
 	cvarString fooString1("fooString1", "foo string var 1", "");
 	cvarString fooString2("fooString2", "foo string var 2", "nom nom nom");
@@ -239,18 +239,18 @@ void test_ini()
 	CHECK((&fooInt3)->GetValueAsString() == "23");
 
 	CHECK(fooFloat1.GetValue() == 0.5f);
-	CHECK((&fooFloat1)->GetValueAsString() == "0.5");
+	CHECK((&fooFloat1)->GetValueAsString() == "0.500000");
 	CHECK(fooFloat2.GetValue() == 23.f);
-	CHECK((&fooFloat2)->GetValueAsString() == "23");
+	CHECK((&fooFloat2)->GetValueAsString() == "23.000000");
 	CHECK(fooFloat3.GetValue() == 45);
-	CHECK((&fooFloat3)->GetValueAsString() == "45");
+	CHECK((&fooFloat3)->GetValueAsString() == "45.000000");
 
 	CHECK(all(fooInt31.GetValue() == int3(1, 2, 3)));
 	CHECK((&fooInt31)->GetValueAsString() == "1 2 3");
 	CHECK(all(fooInt32.GetValue() == int3(1, 2, 3)));
 
 	CHECK(all(fooFloat31.GetValue() == float3(0.f, .5f, .8f)));
-	CHECK((&fooFloat31)->GetValueAsString() == "0 0.5 0.8");
+	CHECK((&fooFloat31)->GetValueAsString() == "0.000000 0.500000 0.800000");
 
 	CHECK(fooString1.GetValue() == "hello world");
 	CHECK((&fooString1)->GetValueAsString() == "hello world");
