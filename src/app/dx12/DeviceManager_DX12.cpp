@@ -56,6 +56,8 @@ freely, subject to the following restrictions:
 
 #include <Windows.h>
 #include <dxgi1_5.h>
+#include <dxgi1_6.h>
+#include <wrl/client.h>
 #include <dxgidebug.h>
 
 #include <nvrhi/d3d12.h>
@@ -132,8 +134,51 @@ static bool IsNvDeviceID(UINT id)
     return id == 0x10DE;
 }
 
+static
+HRESULT CheckDeviceFeatureSupport(ID3D12Device5 *pDevice, const DeviceCreationParameters *parameters) {
+
+  HRESULT hr = S_OK;
+  /// Check ray tracing support.
+  if (parameters->enableRayTracingExtensions) {
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+    if (!SUCCEEDED(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5,
+                                                sizeof(options5))) ||
+        options5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
+      hr = E_FAIL;
+    }
+  }
+
+  /// Check MSAA support.
+  if (parameters->swapChainSampleCount > 0) {
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityDesc;
+
+    switch (parameters->swapChainFormat) // NOLINT(clang-diagnostic-switch-enum)
+    {
+    case nvrhi::Format::SRGBA8_UNORM:
+      msQualityDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      break;
+    case nvrhi::Format::SBGRA8_UNORM:
+      msQualityDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+      break;
+    default:
+      msQualityDesc.Format = nvrhi::d3d12::convertFormat(parameters->swapChainFormat);
+      break;
+    }
+
+    msQualityDesc.SampleCount = parameters->swapChainSampleCount;
+    msQualityDesc.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    msQualityDesc.NumQualityLevels = 0;
+    if (!SUCCEEDED(pDevice->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+                                                &msQualityDesc, sizeof(msQualityDesc))) ||
+        msQualityDesc.NumQualityLevels < parameters->swapChainSampleQuality)
+      hr = E_FAIL;
+  }
+
+  return hr;
+}
+
 // Find an adapter whose name contains the given string.
-static RefCountPtr<IDXGIAdapter> FindAdapter(const std::wstring& targetName)
+static RefCountPtr<IDXGIAdapter> FindAdapter(const DeviceCreationParameters *parameters)
 {
     RefCountPtr<IDXGIAdapter> targetAdapter;
     RefCountPtr<IDXGIFactory1> DXGIFactory;
@@ -144,39 +189,71 @@ static RefCountPtr<IDXGIAdapter> FindAdapter(const std::wstring& targetName)
             "For more info, get log from debug D3D runtime: (1) Install DX SDK, and enable Debug D3D from DX Control Panel Utility. (2) Install and start DbgView. (3) Try running the program again.\n");
         return targetAdapter;
     }
-    
-    unsigned int adapterNo = 0;
-    while (SUCCEEDED(hres))
-    {
-        RefCountPtr<IDXGIAdapter> pAdapter;
-        hres = DXGIFactory->EnumAdapters(adapterNo, &pAdapter);
 
-        if (SUCCEEDED(hres))
-        {
-            DXGI_ADAPTER_DESC aDesc;
-            pAdapter->GetDesc(&aDesc);
+    RefCountPtr<IDXGIAdapter1> pAdater;
+    RefCountPtr<IDXGIFactory6> pFactory6;
+    RefCountPtr<ID3D12Device5> pDevice;
 
-            // If no name is specified, return the first adapater.  This is the same behaviour as the
-            // default specified for D3D11CreateDevice when no adapter is specified.
-            if (targetName.length() == 0)
-            {
-                targetAdapter = pAdapter;
-                break;
-            }
+  if (SUCCEEDED(DXGIFactory->QueryInterface(IID_PPV_ARGS(&pFactory6)))) {
+    for (UINT adapterIndex = 0;
+         DXGI_ERROR_NOT_FOUND != pFactory6->EnumAdapterByGpuPreference(adapterIndex,
+                                                                      parameters->requestHighPerformanceGpu
+                                                                          ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+                                                                          : DXGI_GPU_PREFERENCE_UNSPECIFIED,
+                                                                      IID_PPV_ARGS(pAdater.ReleaseAndGetAddressOf()));
+         ++adapterIndex) {
+      DXGI_ADAPTER_DESC1 desc;
+      pAdater->GetDesc1(&desc);
 
-            std::wstring aName = aDesc.Description;
+      if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+        // Don't select the Basic Render Driver adapter.
+        continue;
+      }
 
-            if (aName.find(targetName) != std::string::npos)
-            {
-                targetAdapter = pAdapter;
-                break;
-            }
-        }
+    //  Check adapter name prefix
+      if (!parameters->adapterNameSubstring.empty() &&
+          parameters->adapterNameSubstring.compare(0, parameters->adapterNameSubstring.length(),
+                                                   desc.Description) != 0) {
+        continue;
+      }
 
-        adapterNo++;
+      // Check to see whether the adapter supports Direct3D 12, but don't create the
+      // actual device yet.
+      if (SUCCEEDED(D3D12CreateDevice(pAdater.Get(), parameters->featureLevel, IID_PPV_ARGS(pDevice.ReleaseAndGetAddressOf()))) &&
+          SUCCEEDED(CheckDeviceFeatureSupport(pDevice.Get(), parameters))) {
+        break;
+      }
     }
+  } else {
+    for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != DXGIFactory->EnumAdapters1(adapterIndex, &pAdater);
+         ++adapterIndex, pAdater = nullptr) {
+      DXGI_ADAPTER_DESC1 desc;
+      pAdater->GetDesc1(&desc);
 
-    return targetAdapter;
+      if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+        // Don't select the Basic Render Driver adapter.
+        // If you want a software adapter, pass in "/warp" on the command line.
+        continue;
+      }
+
+      //  Check adapter name prefix
+      if (!parameters->adapterNameSubstring.empty() &&
+          parameters->adapterNameSubstring.compare(0, parameters->adapterNameSubstring.length(),
+                                                   desc.Description) != 0) {
+        continue;
+      }
+
+      // Check to see whether the adapter supports Direct3D 12, but don't create the
+      // actual device yet.
+      if (SUCCEEDED(D3D12CreateDevice(pAdater.Get(), parameters->featureLevel, IID_PPV_ARGS(pDevice.ReleaseAndGetAddressOf()))) &&
+          CheckDeviceFeatureSupport(pDevice.Get(), parameters)) {
+        break;
+      }
+    }
+  }
+
+  targetAdapter = pAdater;
+  return targetAdapter;
 }
 
 // Adjust window rect so that it is centred on the given adapter.  Clamps to fit if it's too big.
@@ -245,7 +322,7 @@ bool DeviceManager_DX12::CreateDeviceAndSwapChain()
     }
     else
     {
-        targetAdapter = FindAdapter(m_DeviceParams.adapterNameSubstring);
+        targetAdapter = FindAdapter(&m_DeviceParams);
 
         if (!targetAdapter)
         {
