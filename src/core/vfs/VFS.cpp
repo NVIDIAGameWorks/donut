@@ -328,7 +328,7 @@ bool RootFileSystem::findMountPoint(const std::filesystem::path& path, std::file
         {
             if (pRelativePath)
             {
-                std::string relative = spath.substr(it.first.size() + 1);
+                std::string relative = (spath.length() == it.first.length()) ? "" : spath.substr(it.first.size() + 1);
                 *pRelativePath = relative;
             }
 

@@ -48,17 +48,19 @@ void test_native_filesystem()
 		CHECK(fs.fileExists(rpath / "dummy") == false);
 	}
 
-	// enumerate
+	// enumerateDirectories
 	{
 		std::vector<std::string> result;
-		CHECK(fs.enumerate(rpath / "*", true, result)==true);
+		CHECK(fs.enumerateDirectories(rpath, vfs::enumerate_to_vector(result), true) == 2);
 		CHECK(result.size() == 2);
 		CHECK(result[0] == "include");
 		CHECK(result[1] == "src");
 	}
+
+	// enumerateFiles
 	{
 		std::vector<std::string> result;
-		CHECK(fs.enumerate(rpath / "CMake*", false, result)==true);
+		CHECK(fs.enumerateFiles(rpath, {".txt"}, vfs::enumerate_to_vector(result), true) == 1);
 		CHECK(result.size() == 1);
 		CHECK(result[0] == "CMakeLists.txt");
 	}
@@ -95,17 +97,18 @@ void test_relative_filesystem()
 		CHECK(relativeFS.fileExists(rpath / "CMakeLists.txt") == false);
 		CHECK(relativeFS.fileExists("dummy") == false);
 	}
-	// enumerate
+	// enumerateDirectories
 	{
 		std::vector<std::string> result;
-		CHECK(relativeFS.enumerate("*", true, result) == true);
+		CHECK(relativeFS.enumerateDirectories("/", vfs::enumerate_to_vector(result), true) == 2);
 		CHECK(result.size() == 2);
 		CHECK(result[0] == "include");
 		CHECK(result[1] == "src");
 	}
+	// enumerateFiles
 	{
 		std::vector<std::string> result;
-		CHECK(relativeFS.enumerate("CMake*", false, result) == true);
+		CHECK(relativeFS.enumerateFiles("/", {".txt"}, vfs::enumerate_to_vector(result), true) == 1);
 		CHECK(result.size() == 1);
 		CHECK(result[0] == "CMakeLists.txt");
 	}
@@ -143,17 +146,18 @@ void test_root_filesystem()
 		CHECK(rootFS.fileExists("/CMakeLists.txt") == false);
 		CHECK(rootFS.fileExists("/tests/dummy") == false);
 	}
-	// enumerate
+	// enumerateDirectories
 	{
 		std::vector<std::string> result;
-		CHECK(rootFS.enumerate("/tests/*", true, result) == true);
+		CHECK(rootFS.enumerateDirectories("/tests", vfs::enumerate_to_vector(result), true) == 2);
 		CHECK(result.size() == 2);
 		CHECK(result[0] == "include");
 		CHECK(result[1] == "src");
 	}
+	// enumerateFiles
 	{
 		std::vector<std::string> result;
-		CHECK(rootFS.enumerate("/tests/CMake*", false, result) == true);
+		CHECK(rootFS.enumerateFiles("/tests", { ".txt" }, vfs::enumerate_to_vector(result), true) == 1);
 		CHECK(result.size() == 1);
 		CHECK(result[0] == "CMakeLists.txt");
 	}
