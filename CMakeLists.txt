@@ -55,6 +55,10 @@ option(DONUT_WITH_UNIT_TESTS "Donut unit-tests (see CMake/CTest documentation)" 
 add_subdirectory(thirdparty)
 
 if (NOT TARGET ShaderMake)
+    option(SHADERMAKE_FIND_FXC "" "${DONUT_WITH_DX11}")
+    option(SHADERMAKE_FIND_DXC "" "${DONUT_WITH_DX12}")
+    option(SHADERMAKE_FIND_DXC_SPIRV "" "${DONUT_WITH_VULKAN}")
+
     add_subdirectory(ShaderMake)
 endif()
 
