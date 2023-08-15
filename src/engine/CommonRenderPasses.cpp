@@ -219,7 +219,7 @@ void CommonRenderPasses::BlitTexture(nvrhi::ICommandList* commandList, const Bli
 
         bindingSetDesc.bindings = {
             nvrhi::BindingSetItem::PushConstants(0, sizeof(BlitConstants)),
-            nvrhi::BindingSetItem::Texture_SRV(0, params.sourceTexture).setSubresources(sourceSubresources).setDimension(sourceDimension),
+            nvrhi::BindingSetItem::Texture_SRV(0, params.sourceTexture, params.sourceFormat, sourceSubresources, sourceDimension),
             nvrhi::BindingSetItem::Sampler(0, params.sampler == BlitSampler::Point ? m_PointClampSampler : m_LinearClampSampler)
         };
     }

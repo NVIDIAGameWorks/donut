@@ -51,6 +51,7 @@ namespace donut::engine
         uint32_t sourceArraySlice = 0;
         uint32_t sourceMip = 0;
         dm::box2 sourceBox = dm::box2(0.f, 1.f);
+        nvrhi::Format sourceFormat = nvrhi::Format::UNKNOWN;
 
         BlitSampler sampler = BlitSampler::Linear;
         nvrhi::BlendState::RenderTarget blendState;
