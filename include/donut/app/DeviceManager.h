@@ -146,7 +146,7 @@ namespace donut::app
         std::vector<std::string> optionalVulkanDeviceExtensions;
         std::vector<std::string> optionalVulkanLayers;
         std::vector<size_t> ignoredVulkanValidationMessageLocations;
-        std::function<void(vk::DeviceCreateInfo&)> deviceCreateInfoCallback;
+        std::function<void(VkDeviceCreateInfo&)> deviceCreateInfoCallback;
 #endif
     };
 
