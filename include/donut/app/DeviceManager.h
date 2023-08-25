@@ -179,7 +179,7 @@ namespace donut::app
 
         DeviceCreationParameters m_DeviceParams;
         GLFWwindow *m_Window = nullptr;
-        bool m_EnableRenderDuringWindowMovement = true;
+        bool m_EnableRenderDuringWindowMovement = false;
         // set to true if running on NV GPU
         bool m_IsNvidia = false;
         std::list<IRenderPass *> m_vRenderPasses;

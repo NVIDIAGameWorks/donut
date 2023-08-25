@@ -527,13 +527,12 @@ void DeviceManager::WindowPosCallback(int x, int y)
         m_DPIScaleFactorX = dpiX / 96.f;
         m_DPIScaleFactorY = dpiY / 96.f;
     }
-    
+#endif    
     if (m_EnableRenderDuringWindowMovement && m_SwapChainFramebuffers.size() > 0)
     {
         if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
         AnimateRenderPresent();
     }
-#endif
 }
 
 void DeviceManager::KeyboardUpdate(int key, int scancode, int action, int mods)
