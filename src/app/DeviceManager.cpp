@@ -430,38 +430,41 @@ void DeviceManager::RunMessageLoop()
 
         glfwPollEvents();
         UpdateWindowSize();
-
-        double curTime = glfwGetTime();
-        double elapsedTime = curTime - m_PreviousFrameTimestamp;
-
-		JoyStickManager::Singleton().EraseDisconnectedJoysticks();
-		JoyStickManager::Singleton().UpdateAllJoysticks(m_vRenderPasses);
-
-        if (m_windowVisible)
-        {
-            if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
-            Animate(elapsedTime);
-            if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
-            if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
-            Render();
-            if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
-            if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
-            Present();
-            if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(0));
-
-        GetDevice()->runGarbageCollection();
-
-        UpdateAverageFrameTime(elapsedTime);
-        m_PreviousFrameTimestamp = curTime;
-
-        ++m_FrameIndex;
-
+        AnimateRenderPresent();
     }
 
     GetDevice()->waitForIdle();
+}
+
+void DeviceManager::AnimateRenderPresent()
+{
+    double curTime = glfwGetTime();
+    double elapsedTime = curTime - m_PreviousFrameTimestamp;
+
+	JoyStickManager::Singleton().EraseDisconnectedJoysticks();
+	JoyStickManager::Singleton().UpdateAllJoysticks(m_vRenderPasses);
+
+    if (m_windowVisible)
+    {
+        if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
+        Animate(elapsedTime);
+        if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
+        if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
+        Render();
+        if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
+        if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
+        Present();
+        if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(0));
+
+    GetDevice()->runGarbageCollection();
+
+    UpdateAverageFrameTime(elapsedTime);
+    m_PreviousFrameTimestamp = curTime;
+
+    ++m_FrameIndex;
 }
 
 void DeviceManager::GetWindowDimensions(int& width, int& height)
@@ -525,33 +528,10 @@ void DeviceManager::WindowPosCallback(int x, int y)
         m_DPIScaleFactorY = dpiY / 96.f;
     }
     
-    if(m_RenderDuringWindowPosEvent && m_SwapChainFramebuffers.size() > 0)
+    if (m_EnableRenderDuringWindowMovement && m_SwapChainFramebuffers.size() > 0)
     {
         if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
-
-        double curTime = glfwGetTime();
-        double elapsedTime = curTime - m_PreviousFrameTimestamp;
-
-        if (m_windowVisible)
-        {
-            if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
-            Animate(elapsedTime);
-            if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
-            if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
-            Render();
-            if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
-            if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
-            Present();
-            if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(0));
-
-        GetDevice()->runGarbageCollection();
-
-        UpdateAverageFrameTime(elapsedTime);
-        m_PreviousFrameTimestamp = curTime;
-
-        ++m_FrameIndex;
+        AnimateRenderPresent();
     }
 #endif
 }
