@@ -121,6 +121,7 @@ protected:
     uint32_t GetBackBufferCount() override;
     void BeginFrame() override;
     void Present() override;
+    void Shutdown() override;
 
 private:
     bool CreateRenderTargets();
@@ -223,7 +224,14 @@ void DeviceManager_DX12::ReportLiveObjects()
     DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pDebug));
 
     if (pDebug)
-        pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
+    {
+        DXGI_DEBUG_RLO_FLAGS flags = (DXGI_DEBUG_RLO_FLAGS)(DXGI_DEBUG_RLO_IGNORE_INTERNAL | DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_DETAIL);
+        HRESULT hr = pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, flags);
+        if (FAILED(hr))
+        {
+            donut::log::error("ReportLiveObjects failed, HRESULT = 0x%08x", hr);
+        }
+    }
 }
 
 bool DeviceManager_DX12::CreateDeviceAndSwapChain()
@@ -611,6 +619,16 @@ void DeviceManager_DX12::Present()
     m_FrameFence->SetEventOnCompletion(m_FrameCount, m_FrameFenceEvents[bufferIndex]);
     m_GraphicsQueue->Signal(m_FrameFence, m_FrameCount);
     m_FrameCount++;
+}
+
+void DeviceManager_DX12::Shutdown()
+{
+    DeviceManager::Shutdown();
+
+    if (m_DeviceParams.enableDebugRuntime)
+    {
+        ReportLiveObjects();
+    }
 }
 
 DeviceManager *DeviceManager::CreateD3D12(void)

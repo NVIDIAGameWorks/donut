@@ -254,7 +254,7 @@ namespace donut::app
         nvrhi::IFramebuffer* GetCurrentFramebuffer();
         nvrhi::IFramebuffer* GetFramebuffer(uint32_t index);
 
-        void Shutdown();
+        virtual void Shutdown();
         virtual ~DeviceManager() = default;
 
         void SetWindowTitle(const char* title);
