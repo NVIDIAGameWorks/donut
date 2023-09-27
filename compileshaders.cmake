@@ -69,7 +69,7 @@ function(donut_compile_shaders)
            --config ${params_CONFIG}
            --out ${params_DXIL}
            --platform DXIL
-           --blob
+           --binaryBlob
            -I ${DONUT_SHADER_INCLUDE_DIR}
            --compiler "${DXC_PATH}"
            --outputExt .bin
@@ -92,7 +92,7 @@ function(donut_compile_shaders)
            --config ${params_CONFIG}
            --out ${params_DXBC}
            --platform DXBC
-           --blob
+           --binaryBlob
            -I ${DONUT_SHADER_INCLUDE_DIR}
            --compiler "${FXC_PATH}"
            --outputExt .bin
@@ -114,7 +114,7 @@ function(donut_compile_shaders)
            --config ${params_CONFIG}
            --out ${params_SPIRV_DXC}
            --platform SPIRV
-           --blob
+           --binaryBlob
            -I ${DONUT_SHADER_INCLUDE_DIR}
            -D SPIRV
            --compiler "${DXC_SPIRV_PATH}"
