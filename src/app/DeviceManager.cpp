@@ -212,6 +212,12 @@ static const struct
     { nvrhi::Format::RGBA32_FLOAT,      32, 32, 32, 32,  0,  0, },
 };
 
+bool DeviceManager::CreateHeadlessDevice(const DeviceCreationParameters& params)
+{
+    m_DeviceParams = params;
+    return CreateDevice(true);
+}
+
 bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameters& params, const char *windowTitle)
 {
 #ifdef _WINDOWS
@@ -315,7 +321,10 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	  // but should not hurt.
 	  JoyStickManager::Singleton().EnumerateJoysticks();
 
-    if (!CreateDeviceAndSwapChain())
+    if (!CreateDevice(false))
+        return false;
+
+    if (!CreateSwapChain())
         return false;
 
     glfwShowWindow(m_Window);

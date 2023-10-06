@@ -157,7 +157,8 @@ namespace donut::app
     public:
         static DeviceManager* Create(nvrhi::GraphicsAPI api);
 
-        bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters& params, const char *windowTitle);
+        bool CreateHeadlessDevice(const DeviceCreationParameters& params);
+        auto CreateWindowDeviceAndSwapChain(const DeviceCreationParameters& params, const char* windowTitle) -> bool;
 
         void AddRenderPassToFront(IRenderPass *pController);
         void AddRenderPassToBack(IRenderPass *pController);
@@ -211,7 +212,8 @@ namespace donut::app
         void UpdateAverageFrameTime(double elapsedTime);
         void AnimateRenderPresent();
         // device-specific methods
-        virtual bool CreateDeviceAndSwapChain() = 0;
+        virtual bool CreateDevice(bool isHeadless) = 0;
+        virtual bool CreateSwapChain() = 0;
         virtual void DestroyDeviceAndSwapChain() = 0;
         virtual void ResizeSwapChain() = 0;
         virtual void BeginFrame() = 0;
