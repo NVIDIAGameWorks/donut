@@ -21,8 +21,8 @@
 */
 
 #include <donut/core/log.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
 #include <iterator>
 #include <mutex>
 #if _WIN32
@@ -34,6 +34,16 @@ namespace donut::log
     static constexpr size_t g_MessageBufferSize = 4096;
 
     static std::string g_ErrorMessageCaption = "Error";
+
+#if _WIN32
+    static bool g_OutputToMessageBox = true;
+    static bool g_OutputToDebug = true;
+    static bool g_OutputToConsole = false;
+#else
+    static bool g_OutputToMessageBox = false;
+    static bool g_OutputToDebug = false;
+    static bool g_OutputToConsole = true;
+#endif
 
     static std::mutex g_LogMutex;
     
@@ -58,16 +68,28 @@ namespace donut::log
             std::lock_guard<std::mutex> lockGuard(g_LogMutex);
 
 #if _WIN32
-            OutputDebugStringA(buf);
-            OutputDebugStringA("\n");
-
-            if (severity == Severity::Error || severity == Severity::Fatal)
+            if (g_OutputToDebug)
             {
-                MessageBoxA(0, buf, g_ErrorMessageCaption.c_str(), MB_ICONERROR);
+                OutputDebugStringA(buf);
+                OutputDebugStringA("\n");
             }
-#else
-            fprintf(stderr, "%s\n", buf);
+
+            if (g_OutputToMessageBox)
+            {
+                if (severity == Severity::Error || severity == Severity::Fatal)
+                {
+                    MessageBoxA(0, buf, g_ErrorMessageCaption.c_str(), MB_ICONERROR);
+                }
+            }
+
 #endif
+            if (g_OutputToConsole)
+            {
+                if (severity == Severity::Error || severity == Severity::Fatal)
+                    fprintf(stderr, "%s\n", buf);
+                else
+                    fprintf(stdout, "%s\n", buf);
+            }
         }
 
         if (severity == Severity::Fatal)
@@ -100,6 +122,28 @@ namespace donut::log
     void ResetCallback()
     {
         g_Callback = &DefaultCallback;
+    }
+    
+    void EnableOutputToMessageBox(bool enable)
+    {
+        g_OutputToMessageBox = enable;
+    }
+    
+    void EnableOutputToConsole(bool enable)
+    {
+        g_OutputToConsole = enable;
+    }
+    
+    void EnableOutputToDebug(bool enable)
+    {
+        g_OutputToDebug = enable;
+    }
+
+    void ConsoleApplicationMode()
+    {
+        g_OutputToConsole = true;
+        g_OutputToDebug = true;
+        g_OutputToMessageBox = false;
     }
 
     void message(Severity severity, const char* fmt...)
