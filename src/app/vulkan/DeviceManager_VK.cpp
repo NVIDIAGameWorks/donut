@@ -81,8 +81,11 @@ public:
         return nvrhi::GraphicsAPI::VULKAN;
     }
 
+    bool EnumerateAdapters(std::vector<AdapterInfo>& outAdapters) override;
+
 protected:
-    bool CreateDevice(bool isHeadless) override;
+    bool CreateInstanceInternal() override;
+    bool CreateDevice() override;
     bool CreateSwapChain() override;
     void DestroyDeviceAndSwapChain() override;
 
@@ -156,12 +159,12 @@ protected:
     }
 
 private:
-    bool createInstance(bool isHeadless);
+    bool createInstance();
     bool createWindowSurface();
     void installDebugCallback();
-    bool pickPhysicalDevice(bool isHeadless);
-    bool findQueueFamilies(vk::PhysicalDevice physicalDevice, bool isHeadless);
-    bool createDevice(bool isHeadless);
+    bool pickPhysicalDevice();
+    bool findQueueFamilies(vk::PhysicalDevice physicalDevice);
+    bool createDevice();
     bool createSwapChain();
     void destroySwapChain();
 
@@ -312,9 +315,9 @@ static std::vector<T> setToVector(const std::unordered_set<T>& set)
     return ret;
 }
 
-bool DeviceManager_VK::createInstance(bool isHeadless)
+bool DeviceManager_VK::createInstance()
 {
-    if (!isHeadless)
+    if (!m_DeviceParams.headlessDevice)
     {
         if (!glfwVulkanSupported())
         {
@@ -480,12 +483,25 @@ void DeviceManager_VK::installDebugCallback()
     assert(res == vk::Result::eSuccess);
 }
 
-bool DeviceManager_VK::pickPhysicalDevice(bool isHeadless)
+bool DeviceManager_VK::pickPhysicalDevice()
 {
     VkFormat requestedFormat = nvrhi::vulkan::convertFormat(m_DeviceParams.swapChainFormat);
     vk::Extent2D requestedExtent(m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight);
 
     auto devices = m_VulkanInstance.enumeratePhysicalDevices();
+
+    int firstDevice = 0;
+    int lastDevice = int(devices.size()) - 1;
+    if (m_DeviceParams.adapterIndex >= 0)
+    {
+        if (m_DeviceParams.adapterIndex > lastDevice)
+        {
+            log::error("The specified Vulkan physical device %d does not exist.", m_DeviceParams.adapterIndex);
+            return false;
+        }
+        firstDevice = m_DeviceParams.adapterIndex;
+        lastDevice = m_DeviceParams.adapterIndex;
+    }
 
     // Start building an error message in case we cannot find a device.
     std::stringstream errorStream;
@@ -494,9 +510,10 @@ bool DeviceManager_VK::pickPhysicalDevice(bool isHeadless)
     // build a list of GPUs
     std::vector<vk::PhysicalDevice> discreteGPUs;
     std::vector<vk::PhysicalDevice> otherGPUs;
-    for(const auto& dev : devices)
+    for (int deviceIndex = firstDevice; deviceIndex <= lastDevice; ++deviceIndex)
     {
-        auto prop = dev.getProperties();
+        vk::PhysicalDevice const& dev = devices[deviceIndex];
+        vk::PhysicalDeviceProperties prop = dev.getProperties();
 
         errorStream << std::endl << prop.deviceName.data() << ":";
 
@@ -533,7 +550,7 @@ bool DeviceManager_VK::pickPhysicalDevice(bool isHeadless)
             deviceIsGood = false;
         }
 
-        if (!findQueueFamilies(dev, isHeadless))
+        if (!findQueueFamilies(dev))
         {
             // device doesn't have all the queue families we need
             errorStream << std::endl << "  - does not support the necessary queue types";
@@ -624,7 +641,7 @@ bool DeviceManager_VK::pickPhysicalDevice(bool isHeadless)
     return false;
 }
 
-bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice, bool isHeadless)
+bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice)
 {
     auto props = physicalDevice.getQueueFamilyProperties();
 
@@ -673,7 +690,7 @@ bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice, bool
     }
 
     if (m_GraphicsQueueFamily == -1 || 
-        m_PresentQueueFamily == -1 && !isHeadless ||
+        m_PresentQueueFamily == -1 && !m_DeviceParams.headlessDevice ||
         (m_ComputeQueueFamily == -1 && m_DeviceParams.enableComputeQueue) || 
         (m_TransferQueueFamily == -1 && m_DeviceParams.enableCopyQueue))
     {
@@ -683,7 +700,7 @@ bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice, bool
     return true;
 }
 
-bool DeviceManager_VK::createDevice(bool isHeadless)
+bool DeviceManager_VK::createDevice()
 {
     // figure out which optional extensions are supported
     auto deviceExtensions = m_VulkanPhysicalDevice.enumerateDeviceExtensionProperties();
@@ -692,7 +709,7 @@ bool DeviceManager_VK::createDevice(bool isHeadless)
         const std::string name = ext.extensionName;
         if (optionalExtensions.device.find(name) != optionalExtensions.device.end())
         {
-            if (name == VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME && isHeadless)
+            if (name == VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME && m_DeviceParams.headlessDevice)
                 continue;
 
             enabledExtensions.device.insert(name);
@@ -704,7 +721,7 @@ bool DeviceManager_VK::createDevice(bool isHeadless)
         }
     }
 
-    if (!isHeadless)
+    if (!m_DeviceParams.headlessDevice)
     {
         enabledExtensions.device.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     }
@@ -761,7 +778,7 @@ bool DeviceManager_VK::createDevice(bool isHeadless)
     std::unordered_set<int> uniqueQueueFamilies = {
         m_GraphicsQueueFamily };
 
-    if (!isHeadless)
+    if (!m_DeviceParams.headlessDevice)
         uniqueQueueFamilies.insert(m_PresentQueueFamily);
 
     if (m_DeviceParams.enableComputeQueue)
@@ -856,7 +873,7 @@ bool DeviceManager_VK::createDevice(bool isHeadless)
         m_VulkanDevice.getQueue(m_ComputeQueueFamily, 0, &m_ComputeQueue);
     if (m_DeviceParams.enableCopyQueue)
         m_VulkanDevice.getQueue(m_TransferQueueFamily, 0, &m_TransferQueue);
-    if (!isHeadless)
+    if (!m_DeviceParams.headlessDevice)
         m_VulkanDevice.getQueue(m_PresentQueueFamily, 0, &m_PresentQueue);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_VulkanDevice);
@@ -991,7 +1008,7 @@ bool DeviceManager_VK::createSwapChain()
 
 #define CHECK(a) if (!(a)) { return false; }
 
-bool DeviceManager_VK::CreateDevice(bool isHeadless)
+bool DeviceManager_VK::CreateInstanceInternal()
 {
     if (m_DeviceParams.enableDebugRuntime)
     {
@@ -999,12 +1016,51 @@ bool DeviceManager_VK::CreateDevice(bool isHeadless)
         enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
     }
 
-    const PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         m_dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
-    CHECK(createInstance(isHeadless))
+    return createInstance();
+}
 
+bool DeviceManager_VK::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
+{
+    if (!m_VulkanInstance)
+        return false;
+
+    std::vector<vk::PhysicalDevice> devices = m_VulkanInstance.enumeratePhysicalDevices();
+    outAdapters.clear();
+
+    for (auto physicalDevice : devices)
+    {
+        vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+        
+        AdapterInfo adapterInfo;
+        adapterInfo.name = properties.deviceName.data();
+        adapterInfo.vendorID = properties.vendorID;
+        adapterInfo.deviceID = properties.deviceID;
+        adapterInfo.vkPhysicalDevice = physicalDevice;
+        adapterInfo.dedicatedVideoMemory = 0;
+
+        // Go through the memory types to figure out the amount of VRAM on this physical device.
+        vk::PhysicalDeviceMemoryProperties memoryProperties = physicalDevice.getMemoryProperties();
+        for (uint32_t heapIndex = 0; heapIndex < memoryProperties.memoryHeapCount; ++heapIndex)
+        {
+            vk::MemoryHeap const& heap = memoryProperties.memoryHeaps[heapIndex];
+            if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal)
+            {
+                adapterInfo.dedicatedVideoMemory += heap.size;
+            }
+        }
+
+        outAdapters.push_back(std::move(adapterInfo));
+    }
+
+    return true;
+}
+
+bool DeviceManager_VK::CreateDevice()
+{
     if (m_DeviceParams.enableDebugRuntime)
     {
         installDebugCallback();
@@ -1020,7 +1076,7 @@ bool DeviceManager_VK::CreateDevice(bool isHeadless)
         optionalExtensions.device.insert(name);
     }
 
-    if (!isHeadless)
+    if (!m_DeviceParams.headlessDevice)
     {
         // Need to adjust the swap chain format before creating the device because it affects physical device selection
         if (m_DeviceParams.swapChainFormat == nvrhi::Format::SRGBA8_UNORM)
@@ -1030,9 +1086,9 @@ bool DeviceManager_VK::CreateDevice(bool isHeadless)
 
         CHECK(createWindowSurface())
     }
-    CHECK(pickPhysicalDevice(isHeadless))
-    CHECK(findQueueFamilies(m_VulkanPhysicalDevice, isHeadless))
-    CHECK(createDevice(isHeadless))
+    CHECK(pickPhysicalDevice())
+    CHECK(findQueueFamilies(m_VulkanPhysicalDevice))
+    CHECK(createDevice())
 
     auto vecInstanceExt = stringSetToVector(enabledExtensions.instance);
     auto vecLayers = stringSetToVector(enabledExtensions.layers);

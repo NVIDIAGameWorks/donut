@@ -106,6 +106,7 @@ public:
     }
 
     void ReportLiveObjects() override;
+    bool EnumerateAdapters(std::vector<AdapterInfo>& outAdapters) override;
 
     nvrhi::GraphicsAPI GetGraphicsAPI() const override
     {
@@ -113,7 +114,8 @@ public:
     }
     
 protected:
-    bool CreateDevice(bool isHeadless) override;
+    bool CreateInstanceInternal() override;
+    bool CreateDevice() override;
     bool CreateSwapChain() override;
     void DestroyDeviceAndSwapChain() override;
     void ResizeSwapChain() override;
@@ -135,53 +137,6 @@ static bool IsNvDeviceID(UINT id)
     return id == 0x10DE;
 }
 
-// Find an adapter whose name contains the given string.
-static RefCountPtr<IDXGIAdapter> FindAdapter(const std::wstring& targetName)
-{
-    RefCountPtr<IDXGIAdapter> targetAdapter;
-    RefCountPtr<IDXGIFactory1> DXGIFactory;
-    HRESULT hres = CreateDXGIFactory1(IID_PPV_ARGS(&DXGIFactory));
-    if (hres != S_OK)
-    {
-        donut::log::error("ERROR in CreateDXGIFactory.\n"
-            "For more info, get log from debug D3D runtime: (1) Install DX SDK, and enable Debug D3D from DX Control Panel Utility. (2) Install and start DbgView. (3) Try running the program again.\n");
-        return targetAdapter;
-    }
-    
-    unsigned int adapterNo = 0;
-    while (SUCCEEDED(hres))
-    {
-        RefCountPtr<IDXGIAdapter> pAdapter;
-        hres = DXGIFactory->EnumAdapters(adapterNo, &pAdapter);
-
-        if (SUCCEEDED(hres))
-        {
-            DXGI_ADAPTER_DESC aDesc;
-            pAdapter->GetDesc(&aDesc);
-
-            // If no name is specified, return the first adapater.  This is the same behaviour as the
-            // default specified for D3D11CreateDevice when no adapter is specified.
-            if (targetName.length() == 0)
-            {
-                targetAdapter = pAdapter;
-                break;
-            }
-
-            std::wstring aName = aDesc.Description;
-
-            if (aName.find(targetName) != std::string::npos)
-            {
-                targetAdapter = pAdapter;
-                break;
-            }
-        }
-
-        adapterNo++;
-    }
-
-    return targetAdapter;
-}
-
 // Adjust window rect so that it is centred on the given adapter.  Clamps to fit if it's too big.
 static bool MoveWindowOntoAdapter(IDXGIAdapter* targetAdapter, RECT& rect)
 {
@@ -191,7 +146,7 @@ static bool MoveWindowOntoAdapter(IDXGIAdapter* targetAdapter, RECT& rect)
     unsigned int outputNo = 0;
     while (SUCCEEDED(hres))
     {
-        IDXGIOutput* pOutput = nullptr;
+        nvrhi::RefCountPtr<IDXGIOutput> pOutput;
         hres = targetAdapter->EnumOutputs(outputNo++, &pOutput);
 
         if (SUCCEEDED(hres) && pOutput)
@@ -236,57 +191,98 @@ void DeviceManager_DX12::ReportLiveObjects()
     }
 }
 
-bool DeviceManager_DX12::CreateDevice(bool isHeadless)
+static std::string GetAdapterName(DXGI_ADAPTER_DESC const& aDesc)
 {
-    if (m_DeviceParams.adapter)
-    {
-        m_DxgiAdapter = m_DeviceParams.adapter;
-    }
-    else
-    {
-        m_DxgiAdapter = FindAdapter(m_DeviceParams.adapterNameSubstring);
+    size_t length = wcsnlen(aDesc.Description, _countof(aDesc.Description));
 
-        if (!m_DxgiAdapter)
+    std::string name;
+    name.resize(length);
+    WideCharToMultiByte(CP_ACP, 0, aDesc.Description, int(length), name.data(), int(name.size()), nullptr, nullptr);
+
+    return name;
+}
+
+bool DeviceManager_DX12::CreateInstanceInternal()
+{
+    if (!m_DxgiFactory2)
+    {
+        HRESULT hres = CreateDXGIFactory2(m_DeviceParams.enableDebugRuntime ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&m_DxgiFactory2));
+        if (hres != S_OK)
         {
-            std::wstring adapterNameStr(m_DeviceParams.adapterNameSubstring.begin(), m_DeviceParams.adapterNameSubstring.end());
-
-            donut::log::error("Could not find an adapter matching %s\n", adapterNameStr.c_str());
+            donut::log::error("ERROR in CreateDXGIFactory2.\n"
+                "For more info, get log from debug D3D runtime: (1) Install DX SDK, and enable Debug D3D from DX Control Panel Utility. (2) Install and start DbgView. (3) Try running the program again.\n");
             return false;
         }
+    }
+
+    return true;
+}
+
+bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
+{
+    if (!m_DxgiFactory2)
+        return false;
+
+    outAdapters.clear();
+
+    while (true)
+    {
+        RefCountPtr<IDXGIAdapter> adapter;
+        HRESULT hr = m_DxgiFactory2->EnumAdapters(uint32_t(outAdapters.size()), &adapter);
+        if (FAILED(hr))
+            return true;
+
+        DXGI_ADAPTER_DESC desc;
+        hr = adapter->GetDesc(&desc);
+        if (FAILED(hr))
+            return false;
+
+        AdapterInfo adapterInfo;
+
+        adapterInfo.name = GetAdapterName(desc);
+        adapterInfo.dxgiAdapter = adapter;
+        adapterInfo.vendorID = desc.VendorId;
+        adapterInfo.deviceID = desc.DeviceId;
+        adapterInfo.dedicatedVideoMemory = desc.DedicatedVideoMemory;
+
+        outAdapters.push_back(std::move(adapterInfo));
+    }
+}
+
+bool DeviceManager_DX12::CreateDevice()
+{
+    if (m_DeviceParams.enableDebugRuntime)
+    {
+        RefCountPtr<ID3D12Debug> pDebug;
+        HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug));
+        HR_RETURN(hr)
+
+        pDebug->EnableDebugLayer();
+    }
+
+    int adapterIndex = m_DeviceParams.adapterIndex;
+    if (adapterIndex < 0)
+        adapterIndex = 0;
+
+    if (FAILED(m_DxgiFactory2->EnumAdapters(adapterIndex, &m_DxgiAdapter)))
+    {
+        if (adapterIndex == 0)
+            donut::log::error("Cannot find any DXGI adapters in the system.");
+        else
+            donut::log::error("The specified DXGI adapter %d does not exist.", adapterIndex);
+        return false;
     }
 
     {
         DXGI_ADAPTER_DESC aDesc;
         m_DxgiAdapter->GetDesc(&aDesc);
-
-        std::wstring adapterName = aDesc.Description;
-
-        // A stupid but non-deprecated and portable way of converting a wstring to a string
-        std::stringstream ss;
-        std::wstringstream wss;
-        for (auto c : adapterName)
-            ss << wss.narrow(c, '?');
-        m_RendererString = ss.str();
-
+        
+        m_RendererString = GetAdapterName(aDesc);
         m_IsNvidia = IsNvDeviceID(aDesc.VendorId);
     }
 
-    HRESULT hr = E_FAIL;
-
-    if (m_DeviceParams.enableDebugRuntime)
-    {
-        RefCountPtr<ID3D12Debug> pDebug;
-        hr = D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug));
-        HR_RETURN(hr)
-
-        pDebug->EnableDebugLayer();
-    }
     
-    UINT dxgiFactoryFlags = m_DeviceParams.enableDebugRuntime ? DXGI_CREATE_FACTORY_DEBUG : 0;
-    hr = CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_DxgiFactory2));
-    HR_RETURN(hr)
-
-    hr = D3D12CreateDevice(
+    HRESULT hr = D3D12CreateDevice(
         m_DxgiAdapter,
         m_DeviceParams.featureLevel,
         IID_PPV_ARGS(&m_Device12));
@@ -480,8 +476,6 @@ void DeviceManager_DX12::DestroyDeviceAndSwapChain()
     m_ComputeQueue = nullptr;
     m_CopyQueue = nullptr;
     m_Device12 = nullptr;
-    m_DxgiAdapter = nullptr;
-    m_DxgiFactory2 = nullptr;
 }
 
 bool DeviceManager_DX12::CreateRenderTargets()
@@ -629,6 +623,9 @@ void DeviceManager_DX12::Present()
 void DeviceManager_DX12::Shutdown()
 {
     DeviceManager::Shutdown();
+
+    m_DxgiAdapter = nullptr;
+    m_DxgiFactory2 = nullptr;
 
     if (m_DeviceParams.enableDebugRuntime)
     {

@@ -212,10 +212,32 @@ static const struct
     { nvrhi::Format::RGBA32_FLOAT,      32, 32, 32, 32,  0,  0, },
 };
 
+bool DeviceManager::CreateInstance(const InstanceParameters& params)
+{
+    if (m_InstanceCreated)
+        return true;
+
+    static_cast<InstanceParameters&>(m_DeviceParams) = params;
+
+    if (!params.headlessDevice)
+    {
+        if (!glfwInit())
+            return false;
+    }
+
+    m_InstanceCreated = CreateInstanceInternal();
+    return m_InstanceCreated;
+}
+
 bool DeviceManager::CreateHeadlessDevice(const DeviceCreationParameters& params)
 {
     m_DeviceParams = params;
-    return CreateDevice(true);
+    m_DeviceParams.headlessDevice = true;
+
+    if (!CreateInstance(m_DeviceParams))
+        return false;
+
+    return CreateDevice();
 }
 
 bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameters& params, const char *windowTitle)
@@ -225,18 +247,18 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     {
         // this needs to happen before glfwInit in order to override GLFW behavior
         SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-    } else {
+    }
+    else {
         SetProcessDpiAwareness(PROCESS_DPI_UNAWARE);
     }
 #endif
 
-    if (!glfwInit())
-    {
-        return false;
-    }
-
-    this->m_DeviceParams = params;
+    m_DeviceParams = params;
+    m_DeviceParams.headlessDevice = false;
     m_RequestedVSync = params.vsyncEnabled;
+
+    if (!CreateInstance(m_DeviceParams))
+        return false;
 
     glfwSetErrorCallback(ErrorCallback_GLFW);
 
@@ -315,13 +337,13 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     glfwSetCursorPosCallback(m_Window, MousePosCallback_GLFW);
     glfwSetMouseButtonCallback(m_Window, MouseButtonCallback_GLFW);
     glfwSetScrollCallback(m_Window, MouseScrollCallback_GLFW);
-	  glfwSetJoystickCallback(JoystickConnectionCallback_GLFW);
+    glfwSetJoystickCallback(JoystickConnectionCallback_GLFW);
 
-	  // If there are multiple device managers, then this would be called by each one which isn't necessary
-	  // but should not hurt.
-	  JoyStickManager::Singleton().EnumerateJoysticks();
+    // If there are multiple device managers, then this would be called by each one which isn't necessary
+    // but should not hurt.
+    JoyStickManager::Singleton().EnumerateJoysticks();
 
-    if (!CreateDevice(false))
+    if (!CreateDevice())
         return false;
 
     if (!CreateSwapChain())
@@ -708,6 +730,8 @@ void DeviceManager::Shutdown()
     }
 
     glfwTerminate();
+
+    m_InstanceCreated = false;
 }
 
 nvrhi::IFramebuffer* donut::app::DeviceManager::GetCurrentFramebuffer()
