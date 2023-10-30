@@ -138,6 +138,10 @@ bool ImGui_NVRHI::init(nvrhi::DeviceHandle renderer, std::shared_ptr<ShaderFacto
 
     shaderAttribLayout = renderer->createInputLayout(vertexAttribLayout, sizeof(vertexAttribLayout) / sizeof(vertexAttribLayout[0]), vertexShader);
 
+    // add the default font - before creating the font texture
+    auto& io = ImGui::GetIO();
+    io.Fonts->AddFontDefault();
+
     // create font texture
     if (!createFontTexture(m_commandList))
     {
@@ -186,9 +190,6 @@ bool ImGui_NVRHI::init(nvrhi::DeviceHandle renderer, std::shared_ptr<ShaderFacto
         basePSODesc.renderState = renderState;
         basePSODesc.bindingLayouts = { bindingLayout };
     }
-
-    auto& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
 
     m_commandList->close();
     renderer->executeCommandList(m_commandList);
