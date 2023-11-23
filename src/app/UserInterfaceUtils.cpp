@@ -183,7 +183,7 @@ bool donut::app::MaterialEditor(engine::Material* material, bool allowMaterialDo
     if (material->enableNormalTexture)
     {
         ImGui::SetNextItemWidth(itemWidth - 31.f);
-        update |= ImGui::SliderFloat("", &material->normalTextureScale, -2.f, 2.f);
+        update |= ImGui::SliderFloat("##NormalTextureScale", &material->normalTextureScale, -2.f, 2.f);
         ImGui::SameLine(0.f, 5.f);
         ImGui::SetNextItemWidth(26.f);
         if (ImGui::Button("1.0"))
