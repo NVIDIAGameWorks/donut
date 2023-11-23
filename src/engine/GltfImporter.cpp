@@ -483,6 +483,7 @@ bool GltfImporter::Load(
     std::vector<float3> computedTangents;
     std::vector<float3> computedBitangents;
     std::vector<std::shared_ptr<MeshInfo>> meshes;
+    std::shared_ptr<Material> emptyMaterial;
 
     for (size_t mesh_idx = 0; mesh_idx < objects->meshes_count; mesh_idx++)
     {
@@ -874,7 +875,21 @@ bool GltfImporter::Load(
             }
 
             auto geometry = m_SceneTypeFactory->CreateMeshGeometry();
-            geometry->material = materials[prim.material];
+            if (prim.material)
+            {
+                geometry->material = materials[prim.material];
+            }
+            else
+            {
+                log::warning("Geometry %d for mesh '%s' doesn't have a material.", uint32_t(minfo->geometries.size()), minfo->name.c_str());
+                if (!emptyMaterial)
+                {
+                    emptyMaterial = std::make_shared<Material>();
+                    emptyMaterial->name = "(empty)";
+                }
+                geometry->material = emptyMaterial;
+            }
+
             geometry->indexOffsetInMesh = minfo->totalIndices;
             geometry->vertexOffsetInMesh = minfo->totalVertices;
             geometry->numIndices = (uint32_t)indexCount;

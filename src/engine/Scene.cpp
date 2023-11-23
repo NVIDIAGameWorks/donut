@@ -1197,7 +1197,7 @@ void Scene::UpdateGeometry(const std::shared_ptr<MeshInfo>& mesh)
             ? uint32_t(vertexOffset * sizeof(uint32_t) + mesh->buffers->getVertexBufferRange(VertexAttribute::Normal).byteOffset) : ~0u;
         gdata.tangentOffset = mesh->buffers->hasAttribute(VertexAttribute::Tangent)
             ? uint32_t(vertexOffset * sizeof(uint32_t) + mesh->buffers->getVertexBufferRange(VertexAttribute::Tangent).byteOffset) : ~0u;
-        gdata.materialIndex = geometry->material->materialID;
+        gdata.materialIndex = geometry->material ? geometry->material->materialID : ~0u;
     }
 }
 
