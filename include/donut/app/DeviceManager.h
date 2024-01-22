@@ -49,19 +49,19 @@ freely, subject to the following restrictions:
 
 #pragma once
 
-#if USE_DX11 || USE_DX12
+#if DONUT_WITH_DX11 || DONUT_WITH_DX12
 #include <DXGI.h>
 #endif
 
-#if USE_DX11
+#if DONUT_WITH_DX11
 #include <d3d11.h>
 #endif
 
-#if USE_DX12
+#if DONUT_WITH_DX12
 #include <d3d12.h>
 #endif
 
-#if USE_VK
+#if DONUT_WITH_VULKAN
 #include <nvrhi/vulkan.h>
 #endif
 
@@ -91,7 +91,7 @@ namespace donut::app
         bool enableDebugRuntime = false;
         bool headlessDevice = false;
 
-#if USE_VK
+#if DONUT_WITH_VULKAN
         std::vector<std::string> requiredVulkanInstanceExtensions;
         std::vector<std::string> requiredVulkanLayers;
         std::vector<std::string> optionalVulkanInstanceExtensions;
@@ -139,12 +139,12 @@ namespace donut::app
         // and respond to DPI scale factor changes by resizing the backbuffer explicitly
         bool enablePerMonitorDPI = false;
 
-#if USE_DX11 || USE_DX12
+#if DONUT_WITH_DX11 || DONUT_WITH_DX12
         DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
         D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 #endif
 
-#if USE_VK
+#if DONUT_WITH_VULKAN
         std::vector<std::string> requiredVulkanDeviceExtensions;
         std::vector<std::string> optionalVulkanDeviceExtensions;
         std::vector<size_t> ignoredVulkanValidationMessageLocations;
@@ -160,10 +160,10 @@ namespace donut::app
         uint32_t vendorID = 0;
         uint32_t deviceID = 0;
         uint64_t dedicatedVideoMemory = 0;
-#if USE_DX11 || USE_DX12
+#if DONUT_WITH_DX11 || DONUT_WITH_DX12
         nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
 #endif
-#if USE_VK
+#if DONUT_WITH_VULKAN
         VkPhysicalDevice vkPhysicalDevice = nullptr;
 #endif
     };

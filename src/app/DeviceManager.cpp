@@ -57,11 +57,11 @@ freely, subject to the following restrictions:
 #include <thread>
 #include <sstream>
 
-#if USE_DX11
+#if DONUT_WITH_DX11
 #include <d3d11.h>
 #endif
 
-#if USE_DX12
+#if DONUT_WITH_DX12
 #include <d3d12.h>
 #endif
 
@@ -795,15 +795,15 @@ donut::app::DeviceManager* donut::app::DeviceManager::Create(nvrhi::GraphicsAPI 
 {
     switch (api)
     {
-#if USE_DX11
+#if DONUT_WITH_DX11
     case nvrhi::GraphicsAPI::D3D11:
         return CreateD3D11();
 #endif
-#if USE_DX12
+#if DONUT_WITH_DX12
     case nvrhi::GraphicsAPI::D3D12:
         return CreateD3D12();
 #endif
-#if USE_VK
+#if DONUT_WITH_VULKAN
     case nvrhi::GraphicsAPI::VULKAN:
         return CreateVK();
 #endif

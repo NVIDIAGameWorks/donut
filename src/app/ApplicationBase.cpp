@@ -264,11 +264,11 @@ nvrhi::GraphicsAPI donut::app::GetGraphicsAPIFromCommandLine(int argc, const cha
             return nvrhi::GraphicsAPI::VULKAN;
     }
 
-#if USE_DX12
+#if DONUT_WITH_DX12
     return nvrhi::GraphicsAPI::D3D12;
-#elif USE_VK
+#elif DONUT_WITH_VULKAN
     return nvrhi::GraphicsAPI::VULKAN;
-#elif USE_DX11
+#elif DONUT_WITH_DX11
     return nvrhi::GraphicsAPI::D3D11;
 #else
     #error "No Graphics API defined"
