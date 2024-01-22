@@ -45,3 +45,7 @@ target_compile_definitions(donut_render PUBLIC USE_VK=1)
 endif()
 
 set_target_properties(donut_render PROPERTIES FOLDER Donut)
+
+if (DONUT_WITH_STATIC_SHADERS)
+    target_include_directories(donut_render PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+endif()

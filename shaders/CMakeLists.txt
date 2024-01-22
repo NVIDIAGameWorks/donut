@@ -29,16 +29,65 @@ file(GLOB donut_shaders
 	"../include/donut/shaders/*.h"
 )
 
-if(DONUT_SHADERS_OUTPUT_DIR)
+if(DONUT_SHADERS_OUTPUT_DIR AND NOT DONUT_WITH_STATIC_SHADERS)
 	set(output_base ${DONUT_SHADERS_OUTPUT_DIR})
 else()
-	set(output_base ${CMAKE_CURRENT_BINARY_DIR})
+	set(output_base ${CMAKE_CURRENT_BINARY_DIR}/compiled_shaders)
 endif()
+
+if(DONUT_WITH_STATIC_SHADERS)
+	set(output_format "HEADER")
+else()
+	set(output_foramt "BINARY")
+endif()
+
+# List all outputs of the shader compile target to ensure proper rebuilds when using Ninja
+set(byproducts 
+	blit_ps
+	fullscreen_vs
+	ies_profile_cs
+	imgui_pixel
+	imgui_vertex
+	rect_vs
+	sharpen_ps
+	skinning_cs
+	passes/bloom_ps
+	passes/cubemap_gs
+	passes/deferred_lighting_cs
+	passes/depth_ps
+	passes/depth_vs
+	passes/environment_map_ps
+	passes/exposure_cs
+	passes/forward_ps
+	passes/forward_vs
+	passes/gbuffer_ps
+	passes/gbuffer_vs
+	passes/histogram_cs
+	passes/joints_main_ps
+	passes/joints_main_vs
+	passes/light_probe_cubemap_gs
+	passes/light_probe_diffuse_probe_ps
+	passes/light_probe_environment_brdf_ps
+	passes/light_probe_mip_ps
+	passes/light_probe_specular_probe_ps
+	passes/material_id_ps
+	passes/mipmapgen_cs
+	passes/motion_vectors_ps
+	passes/pixel_readback_cs
+	passes/sky_ps
+	passes/ssao_blur_cs
+	passes/ssao_compute_cs
+	passes/ssao_deinterleave_cs
+	passes/taa_cs
+	passes/tonemapping_ps
+)
 
 donut_compile_shaders_all_platforms(
 	TARGET donut_shaders
 	CONFIG ${CMAKE_CURRENT_LIST_DIR}/DonutShaders.cfg
 	FOLDER Donut
 	OUTPUT_BASE ${output_base}
+	OUTPUT_FORMAT ${output_format}
 	SOURCES ${donut_shaders}
+	BYPRODUCTS_NO_EXT ${byproducts}
 )

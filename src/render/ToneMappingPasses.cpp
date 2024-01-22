@@ -29,6 +29,24 @@
 #include <donut/engine/FramebufferFactory.h>
 #include <donut/core/log.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/exposure_cs.dxbc.h"
+#include "compiled_shaders/passes/histogram_cs.dxbc.h"
+#include "compiled_shaders/passes/tonemapping_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/exposure_cs.dxil.h"
+#include "compiled_shaders/passes/histogram_cs.dxil.h"
+#include "compiled_shaders/passes/tonemapping_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/exposure_cs.spirv.h"
+#include "compiled_shaders/passes/histogram_cs.spirv.h"
+#include "compiled_shaders/passes/tonemapping_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/tonemapping_cb.h>
 
@@ -60,9 +78,9 @@ ToneMappingPass::ToneMappingPass(
         Macros.push_back(ShaderMacro("HISTOGRAM_BINS", ss.str()));
         Macros.push_back(ShaderMacro("SOURCE_ARRAY", params.isTextureArray ? "1" : "0"));
 
-        m_HistogramComputeShader = shaderFactory->CreateShader("donut/passes/histogram_cs.hlsl", "main", &Macros, nvrhi::ShaderType::Compute);
-        m_ExposureComputeShader = shaderFactory->CreateShader("donut/passes/exposure_cs.hlsl", "main", &Macros, nvrhi::ShaderType::Compute);
-        m_PixelShader = shaderFactory->CreateShader("donut/passes/tonemapping_ps.hlsl", "main", &Macros, nvrhi::ShaderType::Pixel);
+        m_HistogramComputeShader = shaderFactory->CreateAutoShader("donut/passes/histogram_cs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_histogram_cs), &Macros, nvrhi::ShaderType::Compute);
+        m_ExposureComputeShader = shaderFactory->CreateAutoShader("donut/passes/exposure_cs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_exposure_cs), &Macros, nvrhi::ShaderType::Compute);
+        m_PixelShader = shaderFactory->CreateAutoShader("donut/passes/tonemapping_ps.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_tonemapping_ps), &Macros, nvrhi::ShaderType::Pixel);
     }
 
     nvrhi::BufferDesc constantBufferDesc;

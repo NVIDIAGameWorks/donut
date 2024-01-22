@@ -26,6 +26,30 @@
 #include <donut/engine/CommonRenderPasses.h>
 #include <donut/engine/View.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/light_probe_cubemap_gs.dxbc.h"
+#include "compiled_shaders/passes/light_probe_diffuse_probe_ps.dxbc.h"
+#include "compiled_shaders/passes/light_probe_environment_brdf_ps.dxbc.h"
+#include "compiled_shaders/passes/light_probe_mip_ps.dxbc.h"
+#include "compiled_shaders/passes/light_probe_specular_probe_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/light_probe_cubemap_gs.dxil.h"
+#include "compiled_shaders/passes/light_probe_diffuse_probe_ps.dxil.h"
+#include "compiled_shaders/passes/light_probe_environment_brdf_ps.dxil.h"
+#include "compiled_shaders/passes/light_probe_mip_ps.dxil.h"
+#include "compiled_shaders/passes/light_probe_specular_probe_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/light_probe_cubemap_gs.spirv.h"
+#include "compiled_shaders/passes/light_probe_diffuse_probe_ps.spirv.h"
+#include "compiled_shaders/passes/light_probe_environment_brdf_ps.spirv.h"
+#include "compiled_shaders/passes/light_probe_mip_ps.spirv.h"
+#include "compiled_shaders/passes/light_probe_specular_probe_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/light_probe_cb.h>
 
@@ -44,11 +68,11 @@ LightProbeProcessingPass::LightProbeProcessingPass(
     , m_CommonPasses(commonPasses)
     , m_IntermediateTextureSize(intermediateTextureSize)
 {
-    m_GeometryShader = shaderFactory->CreateShader("donut/passes/light_probe.hlsl", "cubemap_gs", nullptr, nvrhi::ShaderType::Geometry);
-    m_MipPixelShader = shaderFactory->CreateShader("donut/passes/light_probe.hlsl", "mip_ps", nullptr, nvrhi::ShaderType::Pixel);
-    m_DiffusePixelShader = shaderFactory->CreateShader("donut/passes/light_probe.hlsl", "diffuse_probe_ps", nullptr, nvrhi::ShaderType::Pixel);
-    m_SpecularPixelShader = shaderFactory->CreateShader("donut/passes/light_probe.hlsl", "specular_probe_ps", nullptr, nvrhi::ShaderType::Pixel);
-    m_EnvironmentBrdfPixelShader = shaderFactory->CreateShader("donut/passes/light_probe.hlsl", "environment_brdf_ps", nullptr, nvrhi::ShaderType::Pixel);
+    m_GeometryShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "cubemap_gs", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_cubemap_gs), nullptr, nvrhi::ShaderType::Geometry);
+    m_MipPixelShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "mip_ps", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_mip_ps), nullptr, nvrhi::ShaderType::Pixel);
+    m_DiffusePixelShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "diffuse_probe_ps", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_diffuse_probe_ps), nullptr, nvrhi::ShaderType::Pixel);
+    m_SpecularPixelShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "specular_probe_ps", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_specular_probe_ps), nullptr, nvrhi::ShaderType::Pixel);
+    m_EnvironmentBrdfPixelShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "environment_brdf_ps", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_environment_brdf_ps), nullptr, nvrhi::ShaderType::Pixel);
 
     nvrhi::BindingLayoutDesc layoutDesc;
     layoutDesc.visibility = nvrhi::ShaderType::Pixel;

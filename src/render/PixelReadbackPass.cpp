@@ -24,6 +24,18 @@
 #include <donut/engine/ShaderFactory.h>
 #include <donut/engine/CommonRenderPasses.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/pixel_readback_cs.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/pixel_readback_cs.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/pixel_readback_cs.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/pixel_readback_cb.h>
 
@@ -51,7 +63,7 @@ PixelReadbackPass::PixelReadbackPass(
     std::vector<ShaderMacro> macros;
     macros.push_back(ShaderMacro("TYPE", formatName));
     macros.push_back(ShaderMacro("INPUT_MSAA", inputTexture->getDesc().sampleCount > 1 ? "1" : "0"));
-    m_Shader = shaderFactory->CreateShader("donut/passes/pixel_readback_cs.hlsl", "main", &macros, nvrhi::ShaderType::Compute);
+    m_Shader = shaderFactory->CreateAutoShader("donut/passes/pixel_readback_cs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_pixel_readback_cs), &macros, nvrhi::ShaderType::Compute);
 
     nvrhi::BufferDesc bufferDesc;
     bufferDesc.byteSize = 16;

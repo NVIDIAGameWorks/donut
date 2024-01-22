@@ -28,6 +28,18 @@
 #include <donut/engine/CommonRenderPasses.h>
 #include <donut/engine/View.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/sky_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/sky_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/sky_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/sky_cb.h>
 
@@ -42,7 +54,7 @@ SkyPass::SkyPass(
     const ICompositeView& compositeView)
     : m_FramebufferFactory(framebufferFactory)
 {
-    m_PixelShader = shaderFactory->CreateShader("donut/passes/sky_ps.hlsl", "main", nullptr, nvrhi::ShaderType::Pixel);
+    m_PixelShader = shaderFactory->CreateAutoShader("donut/passes/sky_ps.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_sky_ps), nullptr, nvrhi::ShaderType::Pixel);
 
     nvrhi::BufferDesc constantBufferDesc;
     constantBufferDesc.byteSize = sizeof(SkyConstants);

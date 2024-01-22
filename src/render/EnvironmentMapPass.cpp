@@ -27,6 +27,18 @@
 #include <donut/engine/View.h>
 #include <donut/core/math/math.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/environment_map_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/environment_map_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/environment_map_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/sky_cb.h>
 
@@ -50,8 +62,8 @@ EnvironmentMapPass::EnvironmentMapPass(
     std::vector<engine::ShaderMacro> PSMacros;
     PSMacros.push_back(engine::ShaderMacro("LATLONG_TEXTURE", isCubeMap ? "0" : "1"));
 
-    m_PixelShader = shaderFactory->CreateShader("donut/passes/environment_map_ps.hlsl", "main", 
-        &PSMacros, nvrhi::ShaderType::Pixel);
+    m_PixelShader = shaderFactory->CreateAutoShader("donut/passes/environment_map_ps.hlsl", "main", 
+        DONUT_MAKE_PLATFORM_SHADER(g_environment_map_ps), &PSMacros, nvrhi::ShaderType::Pixel);
 
     nvrhi::BufferDesc constantBufferDesc;
     constantBufferDesc.byteSize = sizeof(SkyConstants);

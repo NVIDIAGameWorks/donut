@@ -30,6 +30,21 @@
 #include <nvrhi/utils.h>
 #include <utility>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/depth_vs.dxbc.h"
+#include "compiled_shaders/passes/depth_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/depth_vs.dxil.h"
+#include "compiled_shaders/passes/depth_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/depth_vs.spirv.h"
+#include "compiled_shaders/passes/depth_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/depth_cb.h>
 
@@ -73,12 +88,12 @@ void DepthPass::ResetBindingCache() const
 
 nvrhi::ShaderHandle DepthPass::CreateVertexShader(ShaderFactory& shaderFactory, const CreateParameters& params)
 {
-    return shaderFactory.CreateShader("donut/passes/depth_vs.hlsl", "main", nullptr, nvrhi::ShaderType::Vertex);
+    return shaderFactory.CreateAutoShader("donut/passes/depth_vs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_depth_vs), nullptr, nvrhi::ShaderType::Vertex);
 }
 
 nvrhi::ShaderHandle DepthPass::CreatePixelShader(ShaderFactory& shaderFactory, const CreateParameters& params)
 {
-    return shaderFactory.CreateShader("donut/passes/depth_ps.hlsl", "main", nullptr, nvrhi::ShaderType::Pixel);
+    return shaderFactory.CreateAutoShader("donut/passes/depth_ps.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_depth_ps), nullptr, nvrhi::ShaderType::Pixel);
 }
 
 nvrhi::InputLayoutHandle DepthPass::CreateInputLayout(nvrhi::IShader* vertexShader, const CreateParameters& params)

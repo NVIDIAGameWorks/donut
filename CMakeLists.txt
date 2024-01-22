@@ -45,6 +45,8 @@ cmake_dependent_option(DONUT_WITH_DX11 "Enable the DX11 version of Donut" ON "WI
 cmake_dependent_option(DONUT_WITH_DX12 "Enable the DX12 version of Donut" ON "WIN32" OFF)
 option(DONUT_WITH_VULKAN "Enable the Vulkan version of Donut" ON)
 
+option(DONUT_WITH_STATIC_SHADERS "Build Donut with statically linked shaders" OFF)
+
 option(DONUT_WITH_AUDIO "Include Audio features (XAudio2)" OFF)
 option(DONUT_WITH_LZ4 "Include LZ4" ON)
 option(DONUT_WITH_MINIZ "Include miniz (support for zip archives)" ON)

@@ -25,8 +25,22 @@
 #include <donut/engine/ShaderFactory.h>
 #include <donut/core/math/math.h>
 #include <nvrhi/utils.h>
-
 #include <array>
+
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/joints_main_ps.dxbc.h"
+#include "compiled_shaders/passes/joints_main_vs.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/joints_main_ps.dxil.h"
+#include "compiled_shaders/passes/joints_main_vs.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/joints_main_ps.spirv.h"
+#include "compiled_shaders/passes/joints_main_vs.spirv.h"
+#endif
+#endif
 
 using namespace donut::math;
 using namespace donut::engine;
@@ -46,9 +60,9 @@ namespace donut::render
 
         std::vector<ShaderMacro> macros;
 
-        m_VertexShader = shaderFactory.CreateShader("donut/passes/joints.hlsl", "main_vs", &macros, nvrhi::ShaderType::Vertex);
+        m_VertexShader = shaderFactory.CreateAutoShader("donut/passes/joints.hlsl", "main_vs", DONUT_MAKE_PLATFORM_SHADER(g_joints_main_vs), &macros, nvrhi::ShaderType::Vertex);
 
-        m_PixelShader = shaderFactory.CreateShader("donut/passes/joints.hlsl", "main_ps", &macros, nvrhi::ShaderType::Pixel);
+        m_PixelShader = shaderFactory.CreateAutoShader("donut/passes/joints.hlsl", "main_ps", DONUT_MAKE_PLATFORM_SHADER(g_joints_main_ps), &macros, nvrhi::ShaderType::Pixel);
      
         nvrhi::BindingLayoutDesc bindingLayoutDesc;
         bindingLayoutDesc.visibility = nvrhi::ShaderType::All;

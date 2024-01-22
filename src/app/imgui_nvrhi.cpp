@@ -50,8 +50,23 @@ SOFTWARE.
 
 #include <nvrhi/nvrhi.h>
 #include <donut/engine/ShaderFactory.h>
-
 #include <donut/app/imgui_nvrhi.h>
+#include <donut/core/log.h>
+
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/imgui_vertex.dxbc.h"
+#include "compiled_shaders/imgui_pixel.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/imgui_vertex.dxil.h"
+#include "compiled_shaders/imgui_pixel.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/imgui_vertex.spirv.h"
+#include "compiled_shaders/imgui_pixel.spirv.h"
+#endif
+#endif
 
 using namespace donut::engine;
 using namespace donut::app;
@@ -113,19 +128,12 @@ bool ImGui_NVRHI::init(nvrhi::DeviceHandle renderer, std::shared_ptr<ShaderFacto
 
     m_commandList->open();
     
-    vertexShader = shaderFactory->CreateShader("donut/imgui_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
-    if (vertexShader == nullptr)
+    vertexShader = shaderFactory->CreateAutoShader("donut/imgui_vertex", "main", DONUT_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Vertex);
+    pixelShader = shaderFactory->CreateAutoShader("donut/imgui_pixel", "main", DONUT_MAKE_PLATFORM_SHADER(g_imgui_pixel), nullptr, nvrhi::ShaderType::Pixel);
+    
+    if (!vertexShader || !pixelShader)
     {
-        printf("error creating NVRHI vertex shader object\n");
-        assert(0);
-        return false;
-    }
-
-    pixelShader = shaderFactory->CreateShader("donut/imgui_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
-    if (pixelShader == nullptr)
-    {
-        printf("error creating NVRHI pixel shader object\n");
-        assert(0);
+        log::error("Failed to create an ImGUI shader");
         return false;
     } 
 

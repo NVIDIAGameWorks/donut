@@ -36,6 +36,8 @@ target_include_directories(donut_engine PUBLIC include)
 
 target_link_libraries(donut_engine donut_core nvrhi jsoncpp_static stb tinyexr cgltf ShaderMakeBlob)
 
+add_dependencies(donut_engine donut_shaders)
+
 if (DONUT_WITH_TASKFLOW)
     target_link_libraries(donut_engine taskflow)
     target_compile_definitions(donut_engine PUBLIC DONUT_WITH_TASKFLOW)
@@ -56,3 +58,12 @@ if (DONUT_WITH_TINYEXR)
 endif()
 
 set_target_properties(donut_engine PROPERTIES FOLDER Donut)
+
+target_compile_definitions(donut_engine PUBLIC DONUT_WITH_DX11=$<BOOL:${DONUT_WITH_DX11}>)
+target_compile_definitions(donut_engine PUBLIC DONUT_WITH_DX12=$<BOOL:${DONUT_WITH_DX12}>)
+target_compile_definitions(donut_engine PUBLIC DONUT_WITH_VULKAN=$<BOOL:${DONUT_WITH_VULKAN}>)
+target_compile_definitions(donut_engine PUBLIC DONUT_WITH_STATIC_SHADERS=$<BOOL:${DONUT_WITH_STATIC_SHADERS}>)
+
+if (DONUT_WITH_STATIC_SHADERS)
+target_include_directories(donut_engine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+endif()

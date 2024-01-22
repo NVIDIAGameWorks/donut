@@ -27,6 +27,18 @@
 #include <donut/engine/View.h>
 #include <utility>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/bloom_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/bloom_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/bloom_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/bloom_cb.h>
 
@@ -46,7 +58,7 @@ BloomPass::BloomPass(
     , m_Device(device)
     , m_BindingCache(device)
 {
-    m_BloomBlurPixelShader = shaderFactory->CreateShader("donut/passes/bloom_ps.hlsl", "main", nullptr, nvrhi::ShaderType::Pixel);
+    m_BloomBlurPixelShader = shaderFactory->CreateAutoShader("donut/passes/bloom_ps.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_bloom_ps), nullptr, nvrhi::ShaderType::Pixel);
 
     nvrhi::BufferDesc constantBufferDesc;
     constantBufferDesc.byteSize = sizeof(BloomConstants);

@@ -32,6 +32,24 @@
 #include <nvrhi/utils.h>
 #include <utility>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/cubemap_gs.dxbc.h"
+#include "compiled_shaders/passes/forward_ps.dxbc.h"
+#include "compiled_shaders/passes/forward_vs.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/cubemap_gs.dxil.h"
+#include "compiled_shaders/passes/forward_ps.dxil.h"
+#include "compiled_shaders/passes/forward_vs.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/cubemap_gs.spirv.h"
+#include "compiled_shaders/passes/forward_ps.spirv.h"
+#include "compiled_shaders/passes/forward_vs.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/forward_cb.h>
 
@@ -85,7 +103,7 @@ void ForwardShadingPass::ResetBindingCache()
 
 nvrhi::ShaderHandle ForwardShadingPass::CreateVertexShader(ShaderFactory& shaderFactory, const CreateParameters& params)
 {
-    return shaderFactory.CreateShader("donut/passes/forward_vs.hlsl", "main", nullptr, nvrhi::ShaderType::Vertex);
+    return shaderFactory.CreateAutoShader("donut/passes/forward_vs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_forward_vs), nullptr, nvrhi::ShaderType::Vertex);
 }
 
 nvrhi::ShaderHandle ForwardShadingPass::CreateGeometryShader(ShaderFactory& shaderFactory, const CreateParameters& params)
@@ -100,7 +118,7 @@ nvrhi::ShaderHandle ForwardShadingPass::CreateGeometryShader(ShaderFactory& shad
 
         desc.pCoordinateSwizzling = CubemapView::GetCubemapCoordinateSwizzle();
 
-        return shaderFactory.CreateShader("donut/passes/cubemap_gs.hlsl", "main", nullptr, desc);
+        return shaderFactory.CreateAutoShader("donut/passes/cubemap_gs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_cubemap_gs), nullptr, desc);
     }
 
     return nullptr;
@@ -111,7 +129,7 @@ nvrhi::ShaderHandle ForwardShadingPass::CreatePixelShader(ShaderFactory& shaderF
     std::vector<ShaderMacro> Macros;
     Macros.push_back(ShaderMacro("TRANSMISSIVE_MATERIAL", transmissiveMaterial ? "1" : "0"));
 
-    return shaderFactory.CreateShader("donut/passes/forward_ps.hlsl", "main", &Macros, nvrhi::ShaderType::Pixel);
+    return shaderFactory.CreateAutoShader("donut/passes/forward_ps.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_forward_ps), &Macros, nvrhi::ShaderType::Pixel);
 }
 
 nvrhi::InputLayoutHandle ForwardShadingPass::CreateInputLayout(nvrhi::IShader* vertexShader, const CreateParameters& params)

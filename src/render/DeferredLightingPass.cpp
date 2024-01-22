@@ -32,6 +32,18 @@
 #include <donut/core/log.h>
 #include <utility>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/passes/deferred_lighting_cs.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/passes/deferred_lighting_cs.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/passes/deferred_lighting_cs.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/deferred_lighting_cb.h>
 
@@ -110,7 +122,7 @@ void donut::render::DeferredLightingPass::Init(const std::shared_ptr<engine::Sha
 
 nvrhi::ShaderHandle DeferredLightingPass::CreateComputeShader(ShaderFactory& shaderFactory)
 {
-    return shaderFactory.CreateShader("donut/passes/deferred_lighting_cs.hlsl", "main", nullptr, nvrhi::ShaderType::Compute);
+    return shaderFactory.CreateAutoShader("donut/passes/deferred_lighting_cs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_deferred_lighting_cs), nullptr, nvrhi::ShaderType::Compute);
 }
 
 void DeferredLightingPass::Render(

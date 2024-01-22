@@ -24,6 +24,27 @@
 #include <donut/engine/ShaderFactory.h>
 #include <donut/engine/BindingCache.h>
 
+#if DONUT_WITH_STATIC_SHADERS
+#if DONUT_WITH_DX11
+#include "compiled_shaders/fullscreen_vs.dxbc.h"
+#include "compiled_shaders/rect_vs.dxbc.h"
+#include "compiled_shaders/blit_ps.dxbc.h"
+#include "compiled_shaders/sharpen_ps.dxbc.h"
+#endif
+#if DONUT_WITH_DX12
+#include "compiled_shaders/fullscreen_vs.dxil.h"
+#include "compiled_shaders/rect_vs.dxil.h"
+#include "compiled_shaders/blit_ps.dxil.h"
+#include "compiled_shaders/sharpen_ps.dxil.h"
+#endif
+#if DONUT_WITH_VULKAN
+#include "compiled_shaders/fullscreen_vs.spirv.h"
+#include "compiled_shaders/rect_vs.spirv.h"
+#include "compiled_shaders/blit_ps.spirv.h"
+#include "compiled_shaders/sharpen_ps.spirv.h"
+#endif
+#endif
+
 using namespace donut::math;
 #include <donut/shaders/blit_cb.h>
 
@@ -35,20 +56,20 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice* device, std::shared_ptr<S
     {
         std::vector<ShaderMacro> VsMacros;
         VsMacros.push_back(ShaderMacro("QUAD_Z", "0"));
-        m_FullscreenVS = shaderFactory->CreateShader("donut/fullscreen_vs", "main", &VsMacros, nvrhi::ShaderType::Vertex);
+        m_FullscreenVS = shaderFactory->CreateAutoShader("donut/fullscreen_vs", "main", DONUT_MAKE_PLATFORM_SHADER(g_fullscreen_vs), &VsMacros, nvrhi::ShaderType::Vertex);
 
         VsMacros[0].definition = "1";
-        m_FullscreenAtOneVS = shaderFactory->CreateShader("donut/fullscreen_vs", "main", &VsMacros, nvrhi::ShaderType::Vertex);
+        m_FullscreenAtOneVS = shaderFactory->CreateAutoShader("donut/fullscreen_vs", "main", DONUT_MAKE_PLATFORM_SHADER(g_fullscreen_vs), &VsMacros, nvrhi::ShaderType::Vertex);
     }
 
-    m_RectVS = shaderFactory->CreateShader("donut/rect_vs", "main", nullptr, nvrhi::ShaderType::Vertex);
+    m_RectVS = shaderFactory->CreateAutoShader("donut/rect_vs", "main", DONUT_MAKE_PLATFORM_SHADER(g_rect_vs), nullptr, nvrhi::ShaderType::Vertex);
 
     std::vector<ShaderMacro> blitMacros = { ShaderMacro("TEXTURE_ARRAY", "0") };
-    m_BlitPS = shaderFactory->CreateShader("donut/blit_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-    m_SharpenPS = shaderFactory->CreateShader("donut/sharpen_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
+    m_BlitPS = shaderFactory->CreateAutoShader("donut/blit_ps", "main", DONUT_MAKE_PLATFORM_SHADER(g_blit_ps), &blitMacros, nvrhi::ShaderType::Pixel);
+    m_SharpenPS = shaderFactory->CreateAutoShader("donut/sharpen_ps", "main", DONUT_MAKE_PLATFORM_SHADER(g_sharpen_ps), &blitMacros, nvrhi::ShaderType::Pixel);
     blitMacros[0].definition = "1"; // TEXTURE_ARRAY
-    m_BlitArrayPS = shaderFactory->CreateShader("donut/blit_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-    m_SharpenArrayPS = shaderFactory->CreateShader("donut/sharpen_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
+    m_BlitArrayPS = shaderFactory->CreateAutoShader("donut/blit_ps", "main", DONUT_MAKE_PLATFORM_SHADER(g_blit_ps), &blitMacros, nvrhi::ShaderType::Pixel);
+    m_SharpenArrayPS = shaderFactory->CreateAutoShader("donut/sharpen_ps", "main", DONUT_MAKE_PLATFORM_SHADER(g_sharpen_ps), &blitMacros, nvrhi::ShaderType::Pixel);
     
     auto samplerDesc = nvrhi::SamplerDesc()
         .setAllFilters(false)
