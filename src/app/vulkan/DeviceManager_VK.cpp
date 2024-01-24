@@ -255,7 +255,8 @@ private:
     nvrhi::DeviceHandle m_ValidationLayer;
 
     nvrhi::CommandListHandle m_BarrierCommandList;
-    vk::Semaphore m_PresentSemaphore;
+    std::vector<vk::Semaphore> m_PresentSemaphores;
+    uint32_t m_PresentSemaphoreIndex = 0;
 
     std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
     std::vector<nvrhi::EventQueryHandle> m_QueryPool;
@@ -1133,8 +1134,12 @@ bool DeviceManager_VK::CreateSwapChain()
 
     m_BarrierCommandList = m_NvrhiDevice->createCommandList();
 
-    m_PresentSemaphore = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
-    
+    m_PresentSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
+    for (uint32_t i = 0; i < m_DeviceParams.maxFramesInFlight + 1; ++i)
+    {
+        m_PresentSemaphores.push_back(m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo()));
+    }
+
     return true;
 }
 #undef CHECK
@@ -1143,10 +1148,13 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain()
 {
     destroySwapChain();
 
-    if (m_PresentSemaphore)
+    for (auto& semaphore : m_PresentSemaphores)
     {
-        m_VulkanDevice.destroySemaphore(m_PresentSemaphore);
-        m_PresentSemaphore = vk::Semaphore();
+        if (semaphore)
+        {
+            m_VulkanDevice.destroySemaphore(semaphore);
+            semaphore = vk::Semaphore();
+        }
     }
 
     m_BarrierCommandList = nullptr;
@@ -1182,20 +1190,24 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain()
 
 void DeviceManager_VK::BeginFrame()
 {
+    const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+
     const vk::Result res = m_VulkanDevice.acquireNextImageKHR(m_SwapChain,
                                                       std::numeric_limits<uint64_t>::max(), // timeout
-                                                      m_PresentSemaphore,
+                                                      semaphore,
                                                       vk::Fence(),
                                                       &m_SwapChainIndex);
 
     assert(res == vk::Result::eSuccess);
 
-    m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+    m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 }
 
 void DeviceManager_VK::Present()
 {
-    m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+    const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+
+    m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 
     m_BarrierCommandList->open(); // umm...
     m_BarrierCommandList->close();
@@ -1203,7 +1215,7 @@ void DeviceManager_VK::Present()
 
     vk::PresentInfoKHR info = vk::PresentInfoKHR()
                                 .setWaitSemaphoreCount(1)
-                                .setPWaitSemaphores(&m_PresentSemaphore)
+                                .setPWaitSemaphores(&semaphore)
                                 .setSwapchainCount(1)
                                 .setPSwapchains(&m_SwapChain)
                                 .setPImageIndices(&m_SwapChainIndex);
@@ -1211,46 +1223,39 @@ void DeviceManager_VK::Present()
     const vk::Result res = m_PresentQueue.presentKHR(&info);
     assert(res == vk::Result::eSuccess || res == vk::Result::eErrorOutOfDateKHR);
 
-    if (m_DeviceParams.enableDebugRuntime)
+    m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
+
+#ifndef _WIN32
+    if (m_DeviceParams.vsyncEnabled)
     {
-        // according to vulkan-tutorial.com, "the validation layer implementation expects
-        // the application to explicitly synchronize with the GPU"
         m_PresentQueue.waitIdle();
+    }
+#endif
+
+    while (m_FramesInFlight.size() > m_DeviceParams.maxFramesInFlight)
+    {
+        auto query = m_FramesInFlight.front();
+        m_FramesInFlight.pop();
+
+        m_NvrhiDevice->waitEventQuery(query);
+
+        m_QueryPool.push_back(query);
+    }
+
+    nvrhi::EventQueryHandle query;
+    if (!m_QueryPool.empty())
+    {
+        query = m_QueryPool.back();
+        m_QueryPool.pop_back();
     }
     else
     {
-#ifndef _WIN32
-        if (m_DeviceParams.vsyncEnabled)
-        {
-            m_PresentQueue.waitIdle();
-        }
-#endif
-
-        while (m_FramesInFlight.size() > m_DeviceParams.maxFramesInFlight)
-        {
-            auto query = m_FramesInFlight.front();
-            m_FramesInFlight.pop();
-
-            m_NvrhiDevice->waitEventQuery(query);
-
-            m_QueryPool.push_back(query);
-        }
-
-        nvrhi::EventQueryHandle query;
-        if (!m_QueryPool.empty())
-        {
-            query = m_QueryPool.back();
-            m_QueryPool.pop_back();
-        }
-        else
-        {
-            query = m_NvrhiDevice->createEventQuery();
-        }
-
-        m_NvrhiDevice->resetEventQuery(query);
-        m_NvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
-        m_FramesInFlight.push(query);
+        query = m_NvrhiDevice->createEventQuery();
     }
+
+    m_NvrhiDevice->resetEventQuery(query);
+    m_NvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
+    m_FramesInFlight.push(query);
 }
 
 DeviceManager *DeviceManager::CreateVK()
