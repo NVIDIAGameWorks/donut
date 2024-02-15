@@ -1232,7 +1232,7 @@ void DeviceManager_VK::Present()
     }
 #endif
 
-    while (m_FramesInFlight.size() > m_DeviceParams.maxFramesInFlight)
+    while (m_FramesInFlight.size() >= m_DeviceParams.maxFramesInFlight)
     {
         auto query = m_FramesInFlight.front();
         m_FramesInFlight.pop();
