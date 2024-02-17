@@ -573,6 +573,32 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileAsync(const std:
     return texture;
 }
 
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, tf::Executor& executor)
+{
+    std::shared_ptr<TextureData> texture = CreateTextureData();
+    
+    texture->forceSRGB = sRGB;
+    texture->path = name;
+    texture->mimeType = mimeType;
+
+    executor.async([this, sRGB, texture, data, mimeType]()
+        {
+            if (FillTextureData(data, texture, "", mimeType))
+            {
+                TextureLoaded(texture);
+
+                std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
+
+                m_TexturesToFinalize.push(texture);
+            }
+
+            ++m_TexturesLoaded;
+        });
+
+    return texture;
+}
+#endif
+
 std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemory(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, CommonRenderPasses* passes, nvrhi::ICommandList* commandList)
 {
     std::shared_ptr<TextureData> texture = CreateTextureData();
@@ -615,31 +641,6 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryDeferred(const
     return texture;
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, tf::Executor& executor)
-{
-    std::shared_ptr<TextureData> texture = CreateTextureData();
-    
-    texture->forceSRGB = sRGB;
-    texture->path = name;
-    texture->mimeType = mimeType;
-
-    executor.async([this, sRGB, texture, data, mimeType]()
-        {
-            if (FillTextureData(data, texture, "", mimeType))
-            {
-                TextureLoaded(texture);
-
-                std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
-
-                m_TexturesToFinalize.push(texture);
-            }
-
-            ++m_TexturesLoaded;
-        });
-
-    return texture;
-}
-#endif
 
 std::shared_ptr<TextureData> TextureCache::GetLoadedTexture(std::filesystem::path const& path)
 {

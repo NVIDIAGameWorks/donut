@@ -125,6 +125,9 @@ namespace donut::engine
 #ifdef DONUT_WITH_TASKFLOW
         // Asynchronous read and decode, deferred upload and mip generation (in the ProcessRenderingThreadCommands queue).
         std::shared_ptr<LoadedTexture> LoadTextureFromFileAsync(const std::filesystem::path& path, bool sRGB, tf::Executor& executor);
+
+        // Same as LoadTextureFromFileAsync, but using a memory blob and MIME type instead of file name, and uncached.
+        std::shared_ptr<LoadedTexture> LoadTextureFromMemoryAsync(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, tf::Executor& executor);
 #endif
 
         // Same as LoadTextureFromFile, but using a memory blob and MIME type instead of file name, and uncached.
@@ -132,12 +135,7 @@ namespace donut::engine
 
         // Same as LoadTextureFromFileDeferred, but using a memory blob and MIME type instead of file name, and uncached.
         std::shared_ptr<LoadedTexture> LoadTextureFromMemoryDeferred(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB);
-
-#ifdef DONUT_WITH_TASKFLOW
-        // Same as LoadTextureFromFileAsync, but using a memory blob and MIME type instead of file name, and uncached.
-        std::shared_ptr<LoadedTexture> LoadTextureFromMemoryAsync(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, tf::Executor& executor);
-#endif
-
+        
         // Tells if the texture has been loaded from file successfully and its data is available in the texture object.
         // After the texture is finalized and uploaded to the GPU, the data is no longer available on the CPU, and this function returns false.
         bool IsTextureLoaded(const std::shared_ptr<LoadedTexture>& texture);
