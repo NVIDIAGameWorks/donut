@@ -770,6 +770,8 @@ bool DeviceManager_VK::createDevice()
     // Determine support for maintenance4
     auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features();
 
+    // Put the user-provided extension structure at the end of the chain
+    pNext = m_DeviceParams.physicalDeviceFeatures2Extensions;
     APPEND_EXTENSION(true, bufferDeviceAddressFeatures);
     APPEND_EXTENSION(maintenance4Supported, maintenance4Features);
 

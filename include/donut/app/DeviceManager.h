@@ -149,6 +149,12 @@ namespace donut::app
         std::vector<std::string> optionalVulkanDeviceExtensions;
         std::vector<size_t> ignoredVulkanValidationMessageLocations;
         std::function<void(VkDeviceCreateInfo&)> deviceCreateInfoCallback;
+
+        // This pointer specifies an optional structure to be put at the end of the chain for 'vkGetPhysicalDeviceFeatures2' call.
+        // The structure may also be a chain, and must be alive during the device initialization process.
+        // The elements of this structure will be populated before 'deviceCreateInfoCallback' is called,
+        // thereby allowing applications to determine if certain features may be enabled on the device.
+        void* physicalDeviceFeatures2Extensions = nullptr;
 #endif
     };
 
