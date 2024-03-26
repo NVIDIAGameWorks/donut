@@ -61,7 +61,7 @@ float2 octWrap(float2 v)
 #if __HLSL_VERSION >= 2021
     return (1.f - abs(v.yx)) * select(v.xy >= 0.f, 1.f, -1.f);
 #else
-    return (1.f - abs(v.yx)) * v.xy >= 0.f ? 1.f : -1.f;
+    return (1.f - abs(v.yx)) * (v.xy >= 0.f ? 1.f : -1.f);
 #endif
 }
 
