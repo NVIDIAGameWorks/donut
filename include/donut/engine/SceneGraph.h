@@ -511,7 +511,6 @@ namespace donut::engine
         [[nodiscard]] ConstIterator end() const { return ConstIterator(m_Map.cend()); }
         [[nodiscard]] bool empty() const { return m_Map.empty(); }
         [[nodiscard]] size_t size() const { return m_Map.size(); }
-        [[nodiscard]] const std::shared_ptr<T>& operator[](size_t i) { return m_Map[i].first; }
     };
 
     template<typename T>
