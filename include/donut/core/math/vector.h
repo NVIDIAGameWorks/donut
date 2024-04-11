@@ -191,18 +191,18 @@ namespace donut::math
 
 #define DEFINE_INPLACE_OPERATORS(op) \
         /* Vector-vector op */ \
-        template<typename T> vector<T, 2> operator op (vector<T, 2>& a, const vector<T, 2>& b) \
+        template<typename T> vector<T, 2> & operator op (vector<T, 2>& a, const vector<T, 2>& b) \
         { a.x op b.x; a.y op b.y; return a; } \
-        template<typename T> vector<T, 3> operator op (vector<T, 3>& a, const vector<T, 3>& b) \
+        template<typename T> vector<T, 3> & operator op (vector<T, 3>& a, const vector<T, 3>& b) \
         { a.x op b.x; a.y op b.y; a.z op b.z; return a; } \
-        template<typename T> vector<T, 4> operator op (vector<T, 4>& a, const vector<T, 4>& b) \
+        template<typename T> vector<T, 4> & operator op (vector<T, 4>& a, const vector<T, 4>& b) \
         { a.x op b.x; a.y op b.y; a.z op b.z; a.w op b.w; return a; } \
         /* Vector-scalar op */ \
-        template<typename T> vector<T, 2> operator op (vector<T, 2>& a, T b) \
+        template<typename T> vector<T, 2> & operator op (vector<T, 2>& a, T b) \
         { a.x op b; a.y op b; return a; } \
-        template<typename T> vector<T, 3> operator op (vector<T, 3>& a, T b) \
+        template<typename T> vector<T, 3> & operator op (vector<T, 3>& a, T b) \
         { a.x op b; a.y op b; a.z op b; return a; } \
-        template<typename T> vector<T, 4> operator op (vector<T, 4>& a, T b) \
+        template<typename T> vector<T, 4> & operator op (vector<T, 4>& a, T b) \
         { a.x op b; a.y op b; a.z op b; a.w op b; return a; }
 
 #define DEFINE_RELATIONAL_OPERATORS(op) \
