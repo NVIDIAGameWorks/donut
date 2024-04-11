@@ -37,6 +37,7 @@ namespace donut::engine
 namespace donut::app
 {
     bool FileDialog(bool bOpen, const char* pFilters, std::string& fileName);
+    bool FolderDialog(const char* pTitle, const char* pDefaultFolder, std::string& outFolderName);
     
     bool MaterialEditor(engine::Material* material, bool allowMaterialDomainChanges);
 

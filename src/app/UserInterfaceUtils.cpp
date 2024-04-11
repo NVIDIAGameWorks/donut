@@ -22,6 +22,8 @@
 
 #include <donut/app/UserInterfaceUtils.h>
 #include <donut/engine/SceneGraph.h>
+#include <donut/core/log.h>
+#include <donut/core/string_utils.h>
 
 #include <filesystem>
 #include <imgui.h>
@@ -32,12 +34,15 @@
 #include <climits>
 #else
 #include <Windows.h>
+#include <ShlObj.h>
 #define PATH_MAX MAX_PATH
 #endif // _WIN32
 
 using namespace donut::engine;
 using namespace donut::app;
 using namespace donut::math;
+
+namespace fs = std::filesystem;
 
 bool donut::app::FileDialog(bool bOpen, const char* pFilters, std::string& fileName)
 {
@@ -75,7 +80,13 @@ bool donut::app::FileDialog(bool bOpen, const char* pFilters, std::string& fileN
     {
         app += " --save --confirm-overwrite";
     }
+
     FILE* f = popen(app.c_str(), "r");
+    if (!f)
+    {
+        donut::log::error("Error executing zenity.");
+        return false;
+    }
     bool gotname = (nullptr != fgets(chars, PATH_MAX, f));
     pclose(f);
 
@@ -87,6 +98,75 @@ bool donut::app::FileDialog(bool bOpen, const char* pFilters, std::string& fileN
     return false;
 #endif // _WIN32
 }
+
+#ifdef _WIN32
+static INT CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lp, LPARAM pData)
+{
+    // When the dialog opens, set the selected folder
+    if (uMsg == BFFM_INITIALIZED && pData)
+        SendMessage(hwnd, BFFM_SETSELECTION, TRUE, pData);
+    return 0;
+}
+
+bool donut::app::FolderDialog(const char* pTitle, const char* pDefaultFolder, std::string& outFolderName)
+{
+    BROWSEINFO browseInfo{};
+    browseInfo.hwndOwner = GetForegroundWindow();
+    browseInfo.lpszTitle = pTitle;
+    browseInfo.ulFlags = BIF_USENEWUI | BIF_NONEWFOLDERBUTTON;
+    if (pDefaultFolder)
+    {
+        browseInfo.lpfn = BrowseCallbackProc;
+        browseInfo.lParam = reinterpret_cast<LPARAM>(pDefaultFolder);
+    }
+    if (PIDLIST_ABSOLUTE pIdList = SHBrowseForFolder(&browseInfo))
+    {
+        char path[MAX_PATH];
+        if (SHGetPathFromIDList(pIdList, path))
+        {
+            if (fs::is_directory(path))
+            {
+                outFolderName = path;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+#else
+bool donut::app::FolderDialog(const char* pTitle, const char* pDefaultFolder, std::string& outFolderName)
+{
+    char chars[PATH_MAX] = { 0 };
+
+    std::stringstream ss;
+    ss << "zenity --file-selection --directory";
+    if (pTitle)
+        ss << " --title \"" << pTitle << "\"";
+    if (pDefaultFolder)
+        ss << " --filename=\"" << pDefaultFolder << "\"";
+
+    FILE* f = popen(ss.str().c_str(), "r");
+    if (!f)
+    {
+        donut::log::error("Error executing zenity.");
+        return false;
+    }
+    bool gotname = (nullptr != fgets(chars, PATH_MAX, f));
+    pclose(f);
+
+    if (gotname && chars[0] != '\0')
+    {
+        std::string path = chars;
+        donut::string_utils::trim(path);
+        if (fs::is_directory(path))
+        {
+            outFolderName = path;
+            return true;
+        }
+    }
+    return false;
+}
+#endif
 
 bool donut::app::MaterialEditor(engine::Material* material, bool allowMaterialDomainChanges)
 {
