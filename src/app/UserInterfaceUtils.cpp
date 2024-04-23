@@ -93,6 +93,7 @@ bool donut::app::FileDialog(bool bOpen, const char* pFilters, std::string& fileN
     if (gotname && chars[0] != '\0')
     {
         fileName = chars;
+        donut::string_utils::trim(fileName);
         return true;
     }
     return false;
