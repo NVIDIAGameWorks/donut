@@ -368,10 +368,6 @@ bool GltfImporter::Load(
             matinfo->specularColor = material.pbr_specular_glossiness.specular_factor;
             matinfo->roughness = 1.f - material.pbr_specular_glossiness.glossiness_factor;
             matinfo->opacity = material.pbr_specular_glossiness.diffuse_factor[3];
-
-            if (material.has_transmission)
-            {
-            }
         }
         else if (material.has_pbr_metallic_roughness)
         {
@@ -382,7 +378,6 @@ bool GltfImporter::Load(
             matinfo->metalness = material.pbr_metallic_roughness.metallic_factor;
             matinfo->roughness = material.pbr_metallic_roughness.roughness_factor;
             matinfo->opacity = material.pbr_metallic_roughness.base_color_factor[3];
-
         }
 
         if (material.has_transmission)

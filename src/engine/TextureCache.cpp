@@ -127,7 +127,10 @@ public:
 };
 
 
-TextureCache::TextureCache(nvrhi::IDevice* device, std::shared_ptr<IFileSystem> fs, std::shared_ptr<DescriptorTableManager> descriptorTable)
+TextureCache::TextureCache(
+    nvrhi::IDevice* device,
+    std::shared_ptr<IFileSystem> fs,
+    std::shared_ptr<DescriptorTableManager> descriptorTable)
     : m_Device(device)
     , m_DescriptorTable(std::move(descriptorTable))
     , m_fs(std::move(fs))
@@ -193,7 +196,11 @@ std::shared_ptr<TextureData> TextureCache::CreateTextureData()
     return std::make_shared<TextureData>();
 }
 
-bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, const std::shared_ptr<TextureData>& texture, const std::string& extension, const std::string& mimeType) const
+bool TextureCache::FillTextureData(
+    const std::shared_ptr<vfs::IBlob>& fileData,
+    const std::shared_ptr<TextureData>& texture,
+    const std::string& extension,
+    const std::string& mimeType) const
 {
     if (extension == ".dds" || extension == ".DDS" || mimeType == "image/vnd-ms.dds")
     {
@@ -320,7 +327,8 @@ bool TextureCache::FillTextureData(const std::shared_ptr<vfs::IBlob>& fileData, 
             texture->format = is_hdr ? nvrhi::Format::RG32_FLOAT : nvrhi::Format::RG8_UNORM;
             break;
         case 4:
-            texture->format = is_hdr ? nvrhi::Format::RGBA32_FLOAT : (texture->forceSRGB ? nvrhi::Format::SRGBA8_UNORM : nvrhi::Format::RGBA8_UNORM);
+            texture->format = is_hdr ? nvrhi::Format::RGBA32_FLOAT :
+                (texture->forceSRGB ? nvrhi::Format::SRGBA8_UNORM : nvrhi::Format::RGBA8_UNORM);
             break;
         default:
             texture->data.reset(); // release the bitmap data
@@ -341,7 +349,10 @@ uint GetMipLevelsNum(uint width, uint height)
     return levelsNum;
 }
 
-void TextureCache::FinalizeTexture(std::shared_ptr<TextureData> texture, CommonRenderPasses* passes, nvrhi::ICommandList* commandList)
+void TextureCache::FinalizeTexture(
+    std::shared_ptr<TextureData> texture,
+    CommonRenderPasses* passes,
+    nvrhi::ICommandList* commandList)
 {
     assert(texture->data);
     assert(commandList);
@@ -374,7 +385,8 @@ void TextureCache::FinalizeTexture(std::shared_ptr<TextureData> texture, CommonR
     uint scaledWidth = originalWidth;
     uint scaledHeight = originalHeight;
 
-    if (m_MaxTextureSize > 0 && int(std::max(originalWidth, originalHeight)) > m_MaxTextureSize && texture->isRenderTarget && texture->dimension == nvrhi::TextureDimension::Texture2D)
+    if (m_MaxTextureSize > 0 && int(std::max(originalWidth, originalHeight)) > m_MaxTextureSize &&
+        texture->isRenderTarget && texture->dimension == nvrhi::TextureDimension::Texture2D)
     {
         if (originalWidth >= originalHeight)
         {
@@ -428,7 +440,8 @@ void TextureCache::FinalizeTexture(std::shared_ptr<TextureData> texture, CommonR
         {
             const TextureSubresourceData& layout = texture->dataLayout[arraySlice][0];
 
-            commandList->writeTexture(tempTexture, arraySlice, 0, dataPointer + layout.dataOffset, layout.rowPitch, layout.depthPitch);
+            commandList->writeTexture(tempTexture, arraySlice, 0, dataPointer + layout.dataOffset,
+                layout.rowPitch, layout.depthPitch);
         }
 
         nvrhi::FramebufferHandle framebuffer = m_Device->createFramebuffer(nvrhi::FramebufferDesc()
@@ -444,7 +457,8 @@ void TextureCache::FinalizeTexture(std::shared_ptr<TextureData> texture, CommonR
             {
                 const TextureSubresourceData& layout = texture->dataLayout[arraySlice][mipLevel];
 
-                commandList->writeTexture(texture->texture, arraySlice, mipLevel, dataPointer + layout.dataOffset, layout.rowPitch, layout.depthPitch);
+                commandList->writeTexture(texture->texture, arraySlice, mipLevel, dataPointer + layout.dataOffset,
+                    layout.rowPitch, layout.depthPitch);
             }
         }
     }
@@ -482,12 +496,18 @@ void TextureCache::TextureLoaded(std::shared_ptr<TextureData> texture)
     std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
 
     if (texture->mimeType.empty())
-        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str());
+        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s", texture->width, texture->height,
+        texture->originalBitsPerPixel, texture->path.c_str());
     else
-        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s (%s)", texture->width, texture->height, texture->originalBitsPerPixel, texture->path.c_str(), texture->mimeType.c_str());
+        log::message(m_InfoLogSeverity, "Loaded %d x %d, %d bpp: %s (%s)", texture->width, texture->height,
+        texture->originalBitsPerPixel, texture->path.c_str(), texture->mimeType.c_str());
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::filesystem::path& path, bool sRGB, CommonRenderPasses* passes, nvrhi::ICommandList* commandList)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(
+    const std::filesystem::path& path,
+    bool sRGB,
+    CommonRenderPasses* passes,
+    nvrhi::ICommandList* commandList)
 {
     std::shared_ptr<TextureData> texture;
 
@@ -513,7 +533,9 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
     return texture;
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileDeferred(const std::filesystem::path& path, bool sRGB)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileDeferred(
+    const std::filesystem::path& path,
+    bool sRGB)
 {
     std::shared_ptr<TextureData> texture;
 
@@ -542,7 +564,10 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileDeferred(const s
 }
 
 #ifdef DONUT_WITH_TASKFLOW
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileAsync(const std::filesystem::path& path, bool sRGB, tf::Executor& executor)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileAsync(
+    const std::filesystem::path& path,
+    bool sRGB,
+    tf::Executor& executor)
 {
     std::shared_ptr<TextureData> texture;
 
@@ -573,7 +598,12 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileAsync(const std:
     return texture;
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, tf::Executor& executor)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(
+    const std::shared_ptr<vfs::IBlob>& data,
+    const std::string& name,
+    const std::string& mimeType,
+    bool sRGB,
+    tf::Executor& executor)
 {
     std::shared_ptr<TextureData> texture = CreateTextureData();
     
@@ -599,7 +629,13 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(const st
 }
 #endif
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemory(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB, CommonRenderPasses* passes, nvrhi::ICommandList* commandList)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemory(
+    const std::shared_ptr<vfs::IBlob>& data,
+    const std::string& name,
+    const std::string& mimeType,
+    bool sRGB,
+    CommonRenderPasses* passes,
+    nvrhi::ICommandList* commandList)
 {
     std::shared_ptr<TextureData> texture = CreateTextureData();
     
@@ -619,7 +655,11 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemory(const std::sh
     return texture;
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryDeferred(const std::shared_ptr<vfs::IBlob>& data, const std::string& name, const std::string& mimeType, bool sRGB)
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryDeferred(
+    const std::shared_ptr<vfs::IBlob>& data,
+    const std::string& name,
+    const std::string& mimeType,
+    bool sRGB)
 {
     std::shared_ptr<TextureData> texture = CreateTextureData();
     
@@ -679,7 +719,6 @@ bool TextureCache::ProcessRenderingThreadCommands(CommonRenderPasses& passes, fl
 
         if (pTexture->data)
         {
-            //LOG("Finalizing texture %s", pTexture->fileName.c_str());
             commandsExecuted += 1;
 
             if (!m_CommandList)
@@ -722,7 +761,12 @@ namespace donut::engine
         return stbi_write_bmp(path, dims.x, dims.y, 4, pPixels) != 0;
     }
 
-    bool SaveTextureToFile(nvrhi::IDevice* device, CommonRenderPasses* pPasses, nvrhi::ITexture* texture, nvrhi::ResourceStates textureState, const char* fileName)
+    bool SaveTextureToFile(
+        nvrhi::IDevice* device,
+        CommonRenderPasses* pPasses,
+        nvrhi::ITexture* texture,
+        nvrhi::ResourceStates textureState,
+        const char* fileName)
     {
         nvrhi::TextureDesc desc = texture->getDesc();
         nvrhi::TextureHandle tempTexture;
