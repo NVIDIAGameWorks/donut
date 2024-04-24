@@ -558,56 +558,64 @@ bool DeviceManager_VK::pickPhysicalDevice()
             deviceIsGood = false;
         }
 
-        if (m_WindowSurface)
+        if (deviceIsGood && m_WindowSurface)
         {
-            // check that this device supports our intended swap chain creation parameters
-            auto surfaceCaps = dev.getSurfaceCapabilitiesKHR(m_WindowSurface);
-            auto surfaceFmts = dev.getSurfaceFormatsKHR(m_WindowSurface);
-            auto surfacePModes = dev.getSurfacePresentModesKHR(m_WindowSurface);
-
-            if (surfaceCaps.minImageCount > m_DeviceParams.swapChainBufferCount ||
-                (surfaceCaps.maxImageCount < m_DeviceParams.swapChainBufferCount && surfaceCaps.maxImageCount > 0))
+            bool surfaceSupported = dev.getSurfaceSupportKHR(m_PresentQueueFamily, m_WindowSurface);
+            if (!surfaceSupported)
             {
-                errorStream << std::endl << "  - cannot support the requested swap chain image count:";
-                errorStream << " requested " << m_DeviceParams.swapChainBufferCount << ", available " << surfaceCaps.minImageCount << " - " << surfaceCaps.maxImageCount;
+                errorStream << std::endl << "  - does not support the window surface";
                 deviceIsGood = false;
             }
-
-            if (surfaceCaps.minImageExtent.width > requestedExtent.width ||
-                surfaceCaps.minImageExtent.height > requestedExtent.height ||
-                surfaceCaps.maxImageExtent.width < requestedExtent.width ||
-                surfaceCaps.maxImageExtent.height < requestedExtent.height)
+            else
             {
-                errorStream << std::endl << "  - cannot support the requested swap chain size:";
-                errorStream << " requested " << requestedExtent.width << "x" << requestedExtent.height << ", ";
-                errorStream << " available " << surfaceCaps.minImageExtent.width << "x" << surfaceCaps.minImageExtent.height;
-                errorStream << " - " << surfaceCaps.maxImageExtent.width << "x" << surfaceCaps.maxImageExtent.height;
-                deviceIsGood = false;
-            }
+                // check that this device supports our intended swap chain creation parameters
+                auto surfaceCaps = dev.getSurfaceCapabilitiesKHR(m_WindowSurface);
+                auto surfaceFmts = dev.getSurfaceFormatsKHR(m_WindowSurface);
 
-            bool surfaceFormatPresent = false;
-            for (const vk::SurfaceFormatKHR& surfaceFmt : surfaceFmts)
-            {
-                if (surfaceFmt.format == vk::Format(requestedFormat))
+                if (surfaceCaps.minImageCount > m_DeviceParams.swapChainBufferCount ||
+                    (surfaceCaps.maxImageCount < m_DeviceParams.swapChainBufferCount && surfaceCaps.maxImageCount > 0))
                 {
-                    surfaceFormatPresent = true;
-                    break;
+                    errorStream << std::endl << "  - cannot support the requested swap chain image count:";
+                    errorStream << " requested " << m_DeviceParams.swapChainBufferCount << ", available " << surfaceCaps.minImageCount << " - " << surfaceCaps.maxImageCount;
+                    deviceIsGood = false;
                 }
-            }
 
-            if (!surfaceFormatPresent)
-            {
-                // can't create a swap chain using the format requested
-                errorStream << std::endl << "  - does not support the requested swap chain format";
-                deviceIsGood = false;
-            }
+                if (surfaceCaps.minImageExtent.width > requestedExtent.width ||
+                    surfaceCaps.minImageExtent.height > requestedExtent.height ||
+                    surfaceCaps.maxImageExtent.width < requestedExtent.width ||
+                    surfaceCaps.maxImageExtent.height < requestedExtent.height)
+                {
+                    errorStream << std::endl << "  - cannot support the requested swap chain size:";
+                    errorStream << " requested " << requestedExtent.width << "x" << requestedExtent.height << ", ";
+                    errorStream << " available " << surfaceCaps.minImageExtent.width << "x" << surfaceCaps.minImageExtent.height;
+                    errorStream << " - " << surfaceCaps.maxImageExtent.width << "x" << surfaceCaps.maxImageExtent.height;
+                    deviceIsGood = false;
+                }
 
-            // check that we can present from the graphics queue
-            uint32_t canPresent = dev.getSurfaceSupportKHR(m_GraphicsQueueFamily, m_WindowSurface);
-            if (!canPresent)
-            {
-                errorStream << std::endl << "  - cannot present";
-                deviceIsGood = false;
+                bool surfaceFormatPresent = false;
+                for (const vk::SurfaceFormatKHR& surfaceFmt : surfaceFmts)
+                {
+                    if (surfaceFmt.format == vk::Format(requestedFormat))
+                    {
+                        surfaceFormatPresent = true;
+                        break;
+                    }
+                }
+
+                if (!surfaceFormatPresent)
+                {
+                    // can't create a swap chain using the format requested
+                    errorStream << std::endl << "  - does not support the requested swap chain format";
+                    deviceIsGood = false;
+                }
+
+                // check that we can present from the graphics queue
+                uint32_t canPresent = dev.getSurfaceSupportKHR(m_GraphicsQueueFamily, m_WindowSurface);
+                if (!canPresent)
+                {
+                    errorStream << std::endl << "  - cannot present";
+                    deviceIsGood = false;
+                }
             }
         }
 
