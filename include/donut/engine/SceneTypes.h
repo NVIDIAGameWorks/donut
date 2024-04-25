@@ -109,6 +109,7 @@ namespace donut::engine
     struct Material
     {
         std::string name;
+        int materialIndexInModel = -1;
         MaterialDomain domain = MaterialDomain::Opaque;
         std::shared_ptr<LoadedTexture> baseOrDiffuseTexture; // metal-rough: base color; spec-gloss: diffuse color; .a = opacity (both modes)
         std::shared_ptr<LoadedTexture> metalRoughOrSpecularTexture; // metal-rough: ORM map; spec-gloss: specular color, .a = glossiness
@@ -144,7 +145,7 @@ namespace donut::engine
         bool doubleSided = false;
 
         int materialID = 0;
-        bool dirty = true; // set this to true to make Scene udpate the material data
+        bool dirty = true; // set this to true to make Scene update the material data
 
         virtual ~Material() = default;
         void FillConstantBuffer(struct MaterialConstants& constants) const;

@@ -355,7 +355,9 @@ bool GltfImporter::Load(
         const cgltf_material& material = objects->materials[mat_idx];
         
         std::shared_ptr<Material> matinfo = m_SceneTypeFactory->CreateMaterial();
-        if (material.name) matinfo->name = material.name;
+        if (material.name)
+            matinfo->name = material.name;
+        matinfo->materialIndexInModel = int(mat_idx);
 
         bool useTransmission = false;
 
