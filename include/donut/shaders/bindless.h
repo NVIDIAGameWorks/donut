@@ -134,8 +134,8 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     ret.occlusionStrength = asfloat(e.x);
     ret.alphaCutoff = asfloat(e.y);
     ret.transmissionFactor = asfloat(e.z);
-    ret.baseOrDiffuseTextureIndex = asfloat(e.w);
-    ret.metalRoughOrSpecularTextureIndex = asfloat(f.x);
+    ret.baseOrDiffuseTextureIndex = int(e.w);
+    ret.metalRoughOrSpecularTextureIndex = int(f.x);
     ret.emissiveTextureIndex = int(f.y);
     ret.normalTextureIndex = int(f.z);
     ret.occlusionTextureIndex = int(f.w);
