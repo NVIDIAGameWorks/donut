@@ -117,7 +117,7 @@ protected:
         return uint32_t(m_SwapChainImages.size());
     }
 
-    void BeginFrame() override;
+    bool BeginFrame() override;
     void Present() override;
 
     const char *GetRendererString() const override
@@ -1198,19 +1198,44 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain()
     }
 }
 
-void DeviceManager_VK::BeginFrame()
+bool DeviceManager_VK::BeginFrame()
 {
     const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
 
-    const vk::Result res = m_VulkanDevice.acquireNextImageKHR(m_SwapChain,
-                                                      std::numeric_limits<uint64_t>::max(), // timeout
-                                                      semaphore,
-                                                      vk::Fence(),
-                                                      &m_SwapChainIndex);
+    vk::Result res;
 
-    assert(res == vk::Result::eSuccess);
+    int const maxAttempts = 3;
+    for (int attempt = 0; attempt < maxAttempts; ++attempt)
+    {
+        res = m_VulkanDevice.acquireNextImageKHR(
+            m_SwapChain,
+            std::numeric_limits<uint64_t>::max(), // timeout
+            semaphore,
+            vk::Fence(),
+            &m_SwapChainIndex);
 
-    m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
+        if (res == vk::Result::eErrorOutOfDateKHR && attempt < maxAttempts)
+        {
+            BackBufferResizing();
+            auto surfaceCaps = m_VulkanPhysicalDevice.getSurfaceCapabilitiesKHR(m_WindowSurface);
+
+            m_DeviceParams.backBufferWidth = surfaceCaps.currentExtent.width;
+            m_DeviceParams.backBufferHeight = surfaceCaps.currentExtent.height;
+
+            ResizeSwapChain();
+            BackBufferResized();
+        }
+        else
+            break;
+    }
+
+    if (res == vk::Result::eSuccess)
+    {
+        m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
+        return true;
+    }
+
+    return false;
 }
 
 void DeviceManager_VK::Present()

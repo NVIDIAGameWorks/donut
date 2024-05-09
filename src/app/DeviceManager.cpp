@@ -426,9 +426,7 @@ void DeviceManager::Animate(double elapsedTime)
 }
 
 void DeviceManager::Render()
-{
-    BeginFrame();
-    
+{    
     nvrhi::IFramebuffer* framebuffer = m_SwapChainFramebuffers[GetCurrentBackBufferIndex()];
 
     for (auto it : m_vRenderPasses)
@@ -480,12 +478,15 @@ void DeviceManager::AnimateRenderPresent()
         if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
         Animate(elapsedTime);
         if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
-        if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
-        Render();
-        if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
-        if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
-        Present();
-        if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
+        if (BeginFrame())
+        {
+            if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
+            Render();
+            if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
+            if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
+            Present();
+            if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
+        }
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(0));

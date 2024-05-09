@@ -92,7 +92,7 @@ public:
         return m_NvrhiDevice;
     }
 
-    void BeginFrame() override;
+    bool BeginFrame() override;
     void ReportLiveObjects() override;
     bool EnumerateAdapters(std::vector<AdapterInfo>& outAdapters) override;
 
@@ -182,7 +182,7 @@ static bool MoveWindowOntoAdapter(IDXGIAdapter* targetAdapter, RECT& rect)
     return false;
 }
 
-void DeviceManager_DX11::BeginFrame()
+bool DeviceManager_DX11::BeginFrame()
 {
     DXGI_SWAP_CHAIN_DESC newSwapChainDesc;
     if (SUCCEEDED(m_SwapChain->GetDesc(&newSwapChainDesc)))
@@ -201,8 +201,8 @@ void DeviceManager_DX11::BeginFrame()
             ResizeSwapChain();
             BackBufferResized();
         }
-
     }
+    return true;
 }
 
 void DeviceManager_DX11::ReportLiveObjects()

@@ -250,7 +250,7 @@ namespace donut::app
         virtual bool CreateSwapChain() = 0;
         virtual void DestroyDeviceAndSwapChain() = 0;
         virtual void ResizeSwapChain() = 0;
-        virtual void BeginFrame() = 0;
+        virtual bool BeginFrame() = 0;
         virtual void Present() = 0;
 
     public:

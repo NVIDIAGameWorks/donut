@@ -123,7 +123,7 @@ protected:
     nvrhi::ITexture* GetBackBuffer(uint32_t index) override;
     uint32_t GetCurrentBackBufferIndex() override;
     uint32_t GetBackBufferCount() override;
-    void BeginFrame() override;
+    bool BeginFrame() override;
     void Present() override;
     void Shutdown() override;
 
@@ -551,7 +551,7 @@ void DeviceManager_DX12::ResizeSwapChain()
     }
 }
 
-void DeviceManager_DX12::BeginFrame()
+bool DeviceManager_DX12::BeginFrame()
 {
     DXGI_SWAP_CHAIN_DESC1 newSwapChainDesc;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC newFullScreenDesc;
@@ -578,6 +578,8 @@ void DeviceManager_DX12::BeginFrame()
     auto bufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
     WaitForSingleObject(m_FrameFenceEvents[bufferIndex], INFINITE);
+
+    return true;
 }
 
 nvrhi::ITexture* DeviceManager_DX12::GetCurrentBackBuffer()
