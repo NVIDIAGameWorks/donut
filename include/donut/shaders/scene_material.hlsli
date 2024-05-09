@@ -20,11 +20,12 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#pragma pack_matrix(row_major)
+#ifndef SCENE_MATERIAL_HLSLI
+#define SCENE_MATERIAL_HLSLI
 
-#include <donut/shaders/material_cb.h>
-#include <donut/shaders/brdf.hlsli>
-#include <donut/shaders/surface.hlsli>
+#include "donut/shaders/material_cb.h"
+#include "donut/shaders/brdf.hlsli"
+#include "donut/shaders/surface.hlsli"
 
 // This toggle enables the derivation of baseColor and metalness parameters
 // for materials defined in the specular-glossiness model. If disabled,
@@ -163,7 +164,7 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     result.geometryNormal = normalize(normal);
     result.shadingNormal = result.geometryNormal;
     
-    if (material.flags & MaterialFlags_UseSpecularGlossModel)
+    if ((material.flags & MaterialFlags_UseSpecularGlossModel) != 0)
     {
         float3 diffuseColor = material.baseOrDiffuseColor.rgb * textures.baseOrDiffuse.rgb;
         float3 specularColor = material.specularColor.rgb * textures.metalRoughOrSpecular.rgb;
@@ -193,7 +194,7 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     }
     
     result.occlusion = 1.0;
-    if (material.flags & MaterialFlags_UseOcclusionTexture)
+    if ((material.flags & MaterialFlags_UseOcclusionTexture) != 0)
     {
         result.occlusion = textures.occlusion.r;
     }
@@ -201,20 +202,22 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     result.occlusion = lerp(1.0, result.occlusion, material.occlusionStrength);
     
     result.opacity = material.opacity;
-    if (material.flags & MaterialFlags_UseBaseOrDiffuseTexture)
+    if ((material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
         result.opacity *= textures.baseOrDiffuse.a;
     result.opacity = saturate(result.opacity);
 
     result.transmission = material.transmissionFactor;
-    if (material.flags & MaterialFlags_UseTransmissionTexture)
+    if ((material.flags & MaterialFlags_UseTransmissionTexture) != 0)
         result.transmission *= textures.transmission.r;
     
     result.emissiveColor = material.emissiveColor;
-    if (material.flags & MaterialFlags_UseEmissiveTexture)
+    if ((material.flags & MaterialFlags_UseEmissiveTexture) != 0)
         result.emissiveColor *= textures.emissive.rgb;
 
-    if (material.flags & MaterialFlags_UseNormalTexture)
+    if ((material.flags & MaterialFlags_UseNormalTexture) != 0)
         ApplyNormalMap(result, tangent, textures.normal, material.normalTextureScale);
 
     return result;
 }
+
+#endif

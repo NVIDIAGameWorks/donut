@@ -20,9 +20,12 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef LIGHTING_HLSLI
+#define LIGHTING_HLSLI
+
 #include "light_cb.h"
 
-#include <donut/shaders/brdf.hlsli>
+#include "donut/shaders/brdf.hlsli"
 
 /*
 float _GGX(SurfaceParams surface, float3 lightIncident, float3 viewIncident, float halfAngularSize)
@@ -166,3 +169,5 @@ float GetLightProbeWeight(LightProbeConstants lightProbe, float3 position)
 
     return weight;
 }
+
+#endif

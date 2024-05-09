@@ -23,8 +23,8 @@
 #ifndef GBUFFER_HLSLI
 #define GBUFFER_HLSLI
 
-#include <donut/shaders/view_cb.h>
-#include <donut/shaders/surface.hlsli>
+#include "donut/shaders/view_cb.h"
+#include "donut/shaders/surface.hlsli"
 
 MaterialSample DecodeGBuffer(float4 channels[4])
 {

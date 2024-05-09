@@ -20,6 +20,9 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef MOTION_VECTORS_HLSLI
+#define MOTION_VECTORS_HLSLI
+
 #include "view_cb.h"
 
 float3 GetMotionVector(float3 svPosition, float3 prevWorldPos, PlanarViewConstants view, PlanarViewConstants viewPrev)
@@ -36,3 +39,5 @@ float3 GetMotionVector(float3 svPosition, float3 prevWorldPos, PlanarViewConstan
     motion.z = clipPos.z - svPosition.z;
     return motion;
 }
+
+#endif

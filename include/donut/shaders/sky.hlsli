@@ -20,9 +20,14 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#pragma pack_matrix(row_major)
+#ifndef SKY_HLSLI
+#define SKY_HLSLI
 
-#include <donut/shaders/sky_cb.h>
+#if !__SLANG__
+#pragma pack_matrix(row_major)
+#endif
+
+#include "donut/shaders/sky_cb.h"
 
 float3 ProceduralSky(ProceduralSkyShaderParameters params, float3 direction, float angularSizeOfPixel)
 {
@@ -41,3 +46,5 @@ float3 ProceduralSky(ProceduralSkyShaderParameters params, float3 direction, flo
     
     return environment + light;
 }
+
+#endif

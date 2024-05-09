@@ -23,7 +23,7 @@
 #ifndef BRDF_HLSLI
 #define BRDF_HLSLI
 
-#include <donut/shaders/utils.hlsli>
+#include "donut/shaders/utils.hlsli"
 
 // Converts a Beckmann roughness parameter to a Phong specular power
 float RoughnessToSpecPower(in float m) {

@@ -20,6 +20,9 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef FORWARD_VERTEX_HLSLI
+#define FORWARD_VERTEX_HLSLI
+
 struct SceneVertex
 {
     float3 pos : POS;
@@ -28,3 +31,5 @@ struct SceneVertex
     centroid float3 normal : NORMAL;
     centroid float4 tangent : TANGENT;
 };
+
+#endif

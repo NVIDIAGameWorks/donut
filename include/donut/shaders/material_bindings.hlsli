@@ -20,6 +20,9 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef MATERIAL_BINDINGS_HLSLI
+#define MATERIAL_BINDINGS_HLSLI
+
 // Bindings - can be overriden before including this file if necessary
 
 #ifndef MATERIAL_CB_SLOT 
@@ -72,32 +75,32 @@ MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord)
 {
     MaterialTextureSample values = DefaultMaterialTextures();
 
-    if (g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture)
+    if ((g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
     {
         values.baseOrDiffuse = t_BaseOrDiffuse.Sample(s_MaterialSampler, texCoord);
     }
 
-    if (g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture)
+    if ((g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture) != 0)
     {
         values.metalRoughOrSpecular = t_MetalRoughOrSpecular.Sample(s_MaterialSampler, texCoord);
     }
 
-    if (g_Material.flags & MaterialFlags_UseEmissiveTexture)
+    if ((g_Material.flags & MaterialFlags_UseEmissiveTexture) != 0)
     {
         values.emissive = t_Emissive.Sample(s_MaterialSampler, texCoord);
     }
 
-    if (g_Material.flags & MaterialFlags_UseNormalTexture)
+    if ((g_Material.flags & MaterialFlags_UseNormalTexture) != 0)
     {
         values.normal = t_Normal.Sample(s_MaterialSampler, texCoord);
     }
 
-    if (g_Material.flags & MaterialFlags_UseOcclusionTexture)
+    if ((g_Material.flags & MaterialFlags_UseOcclusionTexture) != 0)
     {
         values.occlusion = t_Occlusion.Sample(s_MaterialSampler, texCoord);
     }
 
-    if (g_Material.flags & MaterialFlags_UseTransmissionTexture)
+    if ((g_Material.flags & MaterialFlags_UseTransmissionTexture) != 0)
     {
         values.transmission = t_Transmission.Sample(s_MaterialSampler, texCoord);
     }
@@ -109,32 +112,32 @@ MaterialTextureSample SampleMaterialTexturesLevel(float2 texCoord, float lod)
 {
     MaterialTextureSample values = DefaultMaterialTextures();
 
-    if (g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture)
+    if ((g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
     {
         values.baseOrDiffuse = t_BaseOrDiffuse.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
-    if (g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture)
+    if ((g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture) != 0)
     {
         values.metalRoughOrSpecular = t_MetalRoughOrSpecular.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
-    if (g_Material.flags & MaterialFlags_UseEmissiveTexture)
+    if ((g_Material.flags & MaterialFlags_UseEmissiveTexture) != 0)
     {
         values.emissive = t_Emissive.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
-    if (g_Material.flags & MaterialFlags_UseNormalTexture)
+    if ((g_Material.flags & MaterialFlags_UseNormalTexture) != 0)
     {
         values.normal = t_Normal.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
-    if (g_Material.flags & MaterialFlags_UseOcclusionTexture)
+    if ((g_Material.flags & MaterialFlags_UseOcclusionTexture) != 0)
     {
         values.occlusion = t_Occlusion.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
-    if (g_Material.flags & MaterialFlags_UseTransmissionTexture)
+    if ((g_Material.flags & MaterialFlags_UseTransmissionTexture) != 0)
     {
         values.transmission = t_Transmission.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
@@ -146,35 +149,37 @@ MaterialTextureSample SampleMaterialTexturesGrad(float2 texCoord, float2 ddx, fl
 {
     MaterialTextureSample values = DefaultMaterialTextures();
 
-    if (g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture)
+    if ((g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
     {
         values.baseOrDiffuse = t_BaseOrDiffuse.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
 
-    if (g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture)
+    if ((g_Material.flags & MaterialFlags_UseMetalRoughOrSpecularTexture) != 0)
     {
         values.metalRoughOrSpecular = t_MetalRoughOrSpecular.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
 
-    if (g_Material.flags & MaterialFlags_UseEmissiveTexture)
+    if ((g_Material.flags & MaterialFlags_UseEmissiveTexture) != 0)
     {
         values.emissive = t_Emissive.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
 
-    if (g_Material.flags & MaterialFlags_UseNormalTexture)
+    if ((g_Material.flags & MaterialFlags_UseNormalTexture) != 0)
     {
         values.normal = t_Normal.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
     
-    if (g_Material.flags & MaterialFlags_UseOcclusionTexture)
+    if ((g_Material.flags & MaterialFlags_UseOcclusionTexture) != 0)
     {
         values.occlusion = t_Occlusion.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
 
-    if (g_Material.flags & MaterialFlags_UseTransmissionTexture)
+    if ((g_Material.flags & MaterialFlags_UseTransmissionTexture) != 0)
     {
         values.transmission = t_Transmission.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
     }
 
     return values;
 }
+
+#endif

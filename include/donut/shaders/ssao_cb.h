@@ -23,7 +23,7 @@
 #ifndef SSAO_CB_H
 #define SSAO_CB_H
 
-#include <donut/shaders/view_cb.h>
+#include "donut/shaders/view_cb.h"
 
 struct SsaoConstants
 {

@@ -20,6 +20,9 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef SHADOWS_HLSLI
+#define SHADOWS_HLSLI
+
 #include "light_cb.h"
 
 float sharpen(float x, float sharpening)
@@ -32,7 +35,7 @@ float sharpen(float x, float sharpening)
 
 float4 ShadowWithMaxDistance(float4 shadowMapValues, float reference, float maxDistance)
 {
-    return 1.0 - (reference > shadowMapValues) * (maxDistance == 0 ? 1 : saturate((shadowMapValues + maxDistance - reference) * 10));
+    return 1.0 - float4(reference > shadowMapValues) * (maxDistance == 0 ? 1 : saturate((shadowMapValues + maxDistance - reference) * 10));
 }
 
 float2 EvaluateShadowGather16(Texture2DArray ShadowMapArray, SamplerState ShadowSampler, ShadowConstants shadowParams, float3 worldPos, float2 shadowMapTextureSize)
@@ -184,3 +187,5 @@ float2 EvaluateShadowPoisson(Texture2DArray ShadowMapArray, SamplerComparisonSta
     shadow /= 16;
     return float2(shadow * fade, fade);
 }
+
+#endif
