@@ -281,7 +281,6 @@ void ThirdPersonCamera::KeyboardUpdate(int key, int scancode, int action, int mo
 
 void ThirdPersonCamera::MousePosUpdate(double xpos, double ypos)
 {
-    m_MousePosPrev = m_MousePos;
     m_MousePos = float2(float(xpos), float(ypos));
 }
 
