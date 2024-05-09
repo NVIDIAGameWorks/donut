@@ -23,7 +23,7 @@
 #ifndef LIGHT_PROBE_CB_H
 #define LIGHT_PROBE_CB_H
 
-struct LightProbeConstants
+struct LightProbeProcessingConstants
 {
     uint sampleCount;
     float lodBias;

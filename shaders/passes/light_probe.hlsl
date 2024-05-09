@@ -105,7 +105,7 @@ float3 uvToDirection(float2 uv, uint face)
 
 cbuffer c_LightProbe : register(b0)
 {
-    LightProbeConstants g_LightProbe;
+    LightProbeProcessingConstants g_LightProbe;
 };
 
 TextureCube t_EnvironmentMap : register(t0);

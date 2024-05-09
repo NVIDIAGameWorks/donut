@@ -84,8 +84,8 @@ LightProbeProcessingPass::LightProbeProcessingPass(
     m_BindingLayout = device->createBindingLayout(layoutDesc);
 
     nvrhi::BufferDesc constantBufferDesc;
-    constantBufferDesc.byteSize = sizeof(LightProbeConstants);
-    constantBufferDesc.debugName = "LightProbeConstants";
+    constantBufferDesc.byteSize = sizeof(LightProbeProcessingConstants);
+    constantBufferDesc.debugName = "LightProbeProcessingConstants";
     constantBufferDesc.isConstantBuffer = true;
     constantBufferDesc.isVolatile = true;
     constantBufferDesc.maxVersions = 64;
@@ -189,7 +189,7 @@ void LightProbeProcessingPass::BlitCubemap(nvrhi::ICommandList* commandList, nvr
         pso = m_Device->createGraphicsPipeline(psoDesc, framebuffer);
     }
 
-    LightProbeConstants constants = {};
+    LightProbeProcessingConstants constants = {};
     commandList->writeBuffer(m_LightProbeCB, &constants, sizeof(constants));
 
     nvrhi::BindingSetHandle bindingSet = GetCachedBindingSet(inCubeMap, nvrhi::TextureSubresourceSet(inMipLevel, 1, inBaseArraySlice, 6));
@@ -267,7 +267,7 @@ void LightProbeProcessingPass::RenderDiffuseMap(
         pso = m_Device->createGraphicsPipeline(psoDesc, framebuffer);
     }
 
-    LightProbeConstants constants = {};
+    LightProbeProcessingConstants constants = {};
     constants.sampleCount = 4096;
     constants.lodBias = 1.0f + 0.5f * dm::log2f((inputSize * inputSize) / constants.sampleCount);
     commandList->writeBuffer(m_LightProbeCB, &constants, sizeof(constants));
@@ -326,7 +326,7 @@ void LightProbeProcessingPass::RenderSpecularMap(nvrhi::ICommandList* commandLis
         pso = m_Device->createGraphicsPipeline(psoDesc, framebuffer);
     }
 
-    LightProbeConstants constants = {};
+    LightProbeProcessingConstants constants = {};
     constants.sampleCount = 1024;
     constants.lodBias = 1.0f;
     constants.inputCubeSize = inputSize;
