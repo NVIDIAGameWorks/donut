@@ -342,7 +342,7 @@ void ThirdPersonCamera::AnimateOrbit(float deltaT)
     if (mouseButtonState[MouseButtons::Left])
     {
         float2 mouseMove = m_MousePos - m_MousePosPrev;
-        float rotateSpeed = .005f;  // mouse sensitivity in radians/pixel
+        float rotateSpeed = m_RotateSpeed;
 
         m_Yaw -= rotateSpeed * mouseMove.x;
         m_Pitch += rotateSpeed * mouseMove.y;
