@@ -24,6 +24,8 @@
 
 #include <unordered_map>
 #include <array>
+#include <optional>
+#include <memory>
 
 #include <donut/core/math/math.h>
 
@@ -33,6 +35,7 @@
 namespace donut::engine
 {
     class PlanarView;
+    class SceneCamera;
 }
 
 namespace donut::app
@@ -88,6 +91,7 @@ namespace donut::app
         void AnimateSmooth(float deltaT);
 
         void LookAt(dm::float3 cameraPos, dm::float3 cameraTarget, dm::float3 cameraUp = dm::float3{ 0.f, 1.f, 0.f });
+        void LookTo(dm::float3 cameraPos, dm::float3 cameraDir, dm::float3 cameraUp = dm::float3{ 0.f, 1.f, 0.f });
 
     private:
         std::pair<bool, dm::affine3> AnimateRoll(dm::affine3 initialRotation);
@@ -172,13 +176,24 @@ namespace donut::app
         void JoystickUpdate(int axis, float value) override;
         void Animate(float deltaT) override;
 
+        dm::float3 GetTargetPosition() const { return m_TargetPos; }
         void SetTargetPosition(dm::float3 position) { m_TargetPos = position; }
+
+        float GetDistance() const { return m_Distance; }
         void SetDistance(float distance) { m_Distance = distance; }
+        
+        float GetRotationYaw() const { return m_Yaw; }
+        float GetRotationPitch() const { return m_Pitch; }
         void SetRotation(float yaw, float pitch);
-        void SetMinDistance(float value) { m_MinDistance = value; }
+
+        float GetMaxDistance() const { return m_MaxDistance; }
         void SetMaxDistance(float value) { m_MaxDistance = value; }
 
         void SetView(const engine::PlanarView& view);
+
+        void LookAt(dm::float3 cameraPos, dm::float3 cameraTarget);
+        void LookTo(dm::float3 cameraPos, dm::float3 cameraDir,
+            std::optional<float> targetDistance = std::optional<float>());
         
     private:
         void AnimateOrbit(float deltaT);
@@ -229,4 +244,72 @@ namespace donut::app
         std::array<bool, MouseButtons::MouseButtonCount> mouseButtonState = { false };
     };
 
+    // The SwitchableCamera class provides a combination of first-person, third-person, and scene graph cameras.
+    // The active camera can be chosen from those options, and switches between the camera types
+    // can preserve the current camera position and orientation when switching to user-controllable types.
+    class SwitchableCamera
+    {
+    public:
+        // Returns the active user-controllable camera (first-person or third-person),
+        // or nullptr if a scene camera is active.
+        BaseCamera* GetActiveUserCamera();
+
+        // A constant version of GetActiveUserCamera.
+        BaseCamera const* GetActiveUserCamera() const;
+
+        bool IsFirstPersonActive() const { return !m_SceneCamera && m_UseFirstPerson; }
+        bool IsThirdPersonActive() const { return !m_SceneCamera && !m_UseFirstPerson; }
+        bool IsSceneCameraActive() const { return !!m_SceneCamera; }
+
+        // Always returns the first-person camera object.
+        FirstPersonCamera& GetFirstPersonCamera() { return m_FirstPerson; }
+
+        // Always returns the third-person camera object.
+        ThirdPersonCamera& GetThirdPersonCamera() { return m_ThirdPerson; }
+
+        // Returns the active scene camera object, or nullptr if a user camera is active.
+        std::shared_ptr<engine::SceneCamera>& GetSceneCamera() { return m_SceneCamera; }
+
+        // Returns the view matrix for the currently active camera.
+        dm::affine3 GetWorldToViewMatrix() const;
+
+        // Fills out the projection parameters from a scene camera, if there is a perspective camera active.
+        // Returns true when the parameters were filled, false if no such camera available.
+        // In the latter case, the input values for the parameters are left unmodified.
+        bool GetSceneCameraProjectionParams(float& verticalFov, float& zNear) const;
+
+        // Switches to the first-person camera, optionally copying the position and direction
+        // from another active camera type.
+        void SwitchToFirstPerson(bool copyView = true);
+
+        // Switches to the third-person camera, optionally copying the position and direction
+        // from another active camera type. When 'targetDistance' is specified, it overrides the current
+        // distance stored in the third-person camera. Suggested use is to determine the distance to the
+        // object in the center of the view at the time of the camera switch and use that distance.
+        void SwitchToThirdPerson(bool copyView = true, std::optional<float> targetDistance = std::optional<float>());
+
+        // Switches to the provided scene graph camera that must not be a nullptr.
+        // The user-controllable cameras are not affected by this call.
+        void SwitchToSceneCamera(std::shared_ptr<engine::SceneCamera> const& sceneCamera);
+
+        // The following methods direct user input events to the active user camera
+        // and return 'true' if such camera is active.
+
+        bool KeyboardUpdate(int key, int scancode, int action, int mods);
+        bool MousePosUpdate(double xpos, double ypos);
+        bool MouseButtonUpdate(int button, int action, int mods);
+        bool MouseScrollUpdate(double xoffset, double yoffset);
+        bool JoystickButtonUpdate(int button, bool pressed);
+        bool JoystickUpdate(int axis, float value);
+
+        // Calls 'Animate' on the active user camera.
+        // It is necessary to call Animate on the camera once per frame to correctly update its state.
+        void Animate(float deltaT);
+
+    private:
+        FirstPersonCamera m_FirstPerson;
+        ThirdPersonCamera m_ThirdPerson;
+        std::shared_ptr<engine::SceneCamera> m_SceneCamera;
+        bool m_UseFirstPerson = false;
+    };
 }

@@ -22,8 +22,8 @@
 
 #include <cassert>
 #include <donut/app/Camera.h>
-
-#include "donut/engine/View.h"
+#include <donut/engine/SceneGraph.h>
+#include <donut/engine/View.h>
 
 using namespace donut::math;
 using namespace donut::app;
@@ -88,6 +88,11 @@ void FirstPersonCamera::LookAt(float3 cameraPos, float3 cameraTarget, float3 cam
 {
     // Make the base method public.
     BaseLookAt(cameraPos, cameraTarget, cameraUp);
+}
+
+void FirstPersonCamera::LookTo(dm::float3 cameraPos, dm::float3 cameraDir, dm::float3 cameraUp)
+{
+    BaseLookAt(cameraPos, cameraPos + cameraDir, cameraUp);
 }
 
 std::pair<bool, float3> FirstPersonCamera::AnimateTranslation(float deltaT)
@@ -425,4 +430,199 @@ void ThirdPersonCamera::Animate(float deltaT)
     UpdateWorldToView();
     
     m_MousePosPrev = m_MousePos;
+}
+
+void ThirdPersonCamera::LookAt(dm::float3 cameraPos, dm::float3 cameraTarget)
+{
+    dm::float3 cameraDir = cameraTarget - cameraPos;
+
+    float azimuth, elevation, dirLength;
+    dm::cartesianToSpherical(cameraDir, azimuth, elevation, dirLength);
+
+    SetTargetPosition(cameraTarget);
+    SetDistance(dirLength);
+    azimuth = -(azimuth + dm::PI_f * 0.5f);
+    SetRotation(azimuth, elevation);
+}
+
+void ThirdPersonCamera::LookTo(dm::float3 cameraPos, dm::float3 cameraDir,
+    std::optional<float> targetDistance)
+{
+    float azimuth, elevation, dirLength;
+    dm::cartesianToSpherical(-cameraDir, azimuth, elevation, dirLength);
+    cameraDir /= dirLength;
+
+    float const distance = targetDistance.value_or(GetDistance());
+    SetTargetPosition(cameraPos + cameraDir * distance);
+    SetDistance(distance);
+    azimuth = -(azimuth + dm::PI_f * 0.5f);
+    SetRotation(azimuth, elevation);
+}
+
+BaseCamera* SwitchableCamera::GetActiveUserCamera()
+{
+    if (IsFirstPersonActive())
+        return &m_FirstPerson;
+
+    if (IsThirdPersonActive())
+        return &m_ThirdPerson;
+
+    return nullptr;
+}
+
+BaseCamera const* SwitchableCamera::GetActiveUserCamera() const
+{
+    if (IsFirstPersonActive())
+        return &m_FirstPerson;
+
+    if (IsThirdPersonActive())
+        return &m_ThirdPerson;
+
+    return nullptr;
+}
+
+dm::affine3 SwitchableCamera::GetWorldToViewMatrix() const
+{
+    if (m_SceneCamera)
+        return m_SceneCamera->GetWorldToViewMatrix();
+
+    return GetActiveUserCamera()->GetWorldToViewMatrix();
+}
+
+bool SwitchableCamera::GetSceneCameraProjectionParams(float& verticalFov, float& zNear) const
+{
+    auto perspectiveCamera = std::dynamic_pointer_cast<engine::PerspectiveCamera>(m_SceneCamera);
+    if (perspectiveCamera)
+    {
+        zNear = perspectiveCamera->zNear;
+        verticalFov = perspectiveCamera->verticalFov;
+        return true;
+    }
+    return false;
+}
+
+void SwitchableCamera::SwitchToFirstPerson(bool copyView)
+{
+    if (IsFirstPersonActive())
+        return;
+
+    if (copyView)
+    {
+        if (m_SceneCamera)
+        {
+            dm::affine3 viewToWorld = m_SceneCamera->GetViewToWorldMatrix();
+            m_FirstPerson.LookTo(viewToWorld.m_translation, viewToWorld.m_linear.row2, viewToWorld.m_linear.row1);
+        }
+        else
+        {
+            m_FirstPerson.LookTo(m_ThirdPerson.GetPosition(), m_ThirdPerson.GetDir(), m_ThirdPerson.GetUp());
+        }
+    }
+
+    m_UseFirstPerson = true;
+    m_SceneCamera = nullptr;
+}
+
+void SwitchableCamera::SwitchToThirdPerson(bool copyView, std::optional<float> targetDistance)
+{
+    if (IsThirdPersonActive())
+        return;
+        
+    if (copyView)
+    {
+        if (m_SceneCamera)
+        {
+            dm::affine3 viewToWorld = m_SceneCamera->GetViewToWorldMatrix();
+            m_ThirdPerson.LookTo(viewToWorld.m_translation, viewToWorld.m_linear.row2, targetDistance);
+        }
+        else
+        {
+            m_ThirdPerson.LookTo(m_FirstPerson.GetPosition(), m_FirstPerson.GetDir(), targetDistance);
+        }
+    }
+
+    m_UseFirstPerson = false;
+    m_SceneCamera = nullptr;
+}
+
+void SwitchableCamera::SwitchToSceneCamera(std::shared_ptr<engine::SceneCamera> const& sceneCamera)
+{
+    assert(!!sceneCamera);
+    
+    m_SceneCamera = sceneCamera;
+}
+
+bool SwitchableCamera::KeyboardUpdate(int key, int scancode, int action, int mods)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->KeyboardUpdate(key, scancode, action, mods);
+        return true;
+    }
+    return false;
+}
+
+bool SwitchableCamera::MousePosUpdate(double xpos, double ypos)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->MousePosUpdate(xpos, ypos);
+        return true;
+    }
+    return false;
+}
+
+bool SwitchableCamera::MouseButtonUpdate(int button, int action, int mods)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->MouseButtonUpdate(button, action, mods);
+        return true;
+    }
+    return false;
+}
+
+bool SwitchableCamera::MouseScrollUpdate(double xoffset, double yoffset)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->MouseScrollUpdate(xoffset, yoffset);
+        return true;
+    }
+    return false;
+}
+
+bool SwitchableCamera::JoystickButtonUpdate(int button, bool pressed)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->JoystickButtonUpdate(button, pressed);
+        return true;
+    }
+    return false;
+}
+
+bool SwitchableCamera::JoystickUpdate(int axis, float value)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->JoystickUpdate(axis, value);
+        return true;
+    }
+    return false;
+}
+
+void SwitchableCamera::Animate(float deltaT)
+{
+    BaseCamera* activeCamera = GetActiveUserCamera();
+    if (activeCamera)
+    {
+        activeCamera->Animate(deltaT);
+    }
 }
