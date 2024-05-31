@@ -143,6 +143,9 @@ namespace donut::engine
         bool enableTransmissionTexture = true;
 
         bool doubleSided = false;
+        
+        // Useful when metalness and roughness are packed into a 2-channel texture for BC5 encoding.
+        bool metalnessInRedChannel = false;
 
         int materialID = 0;
         bool dirty = true; // set this to true to make Scene update the material data

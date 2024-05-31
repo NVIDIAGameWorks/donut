@@ -62,6 +62,9 @@ namespace donut::engine
         if (doubleSided)
             constants.flags |= MaterialFlags_DoubleSided;
 
+        if (metalnessInRedChannel)
+            constants.flags |= MaterialFlags_MetalnessInRedChannel;
+
         // free parameters
 
         constants.domain = (int)domain;

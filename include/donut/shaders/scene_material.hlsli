@@ -184,7 +184,10 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     {
         result.baseColor = material.baseOrDiffuseColor.rgb * textures.baseOrDiffuse.rgb;
         result.roughness = material.roughness * textures.metalRoughOrSpecular.g;
-        result.metalness = material.metalness * textures.metalRoughOrSpecular.b;
+        if ((material.flags & MaterialFlags_MetalnessInRedChannel) != 0)
+            result.metalness = material.metalness * textures.metalRoughOrSpecular.r;
+        else
+            result.metalness = material.metalness * textures.metalRoughOrSpecular.b;
         result.hasMetalRoughParams = true;
 
         // Compute the BRDF inputs for the metal-rough model

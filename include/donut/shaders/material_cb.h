@@ -38,6 +38,7 @@ static const int MaterialFlags_UseEmissiveTexture               = 0x00000010;
 static const int MaterialFlags_UseNormalTexture                 = 0x00000020;
 static const int MaterialFlags_UseOcclusionTexture              = 0x00000040;
 static const int MaterialFlags_UseTransmissionTexture           = 0x00000080;
+static const int MaterialFlags_MetalnessInRedChannel            = 0x00000100;
 
 // NOTE: adjust LoadMaterialConstants(...) in bindless.h when changing this structure
 
