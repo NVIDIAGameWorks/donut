@@ -26,6 +26,7 @@
 #include "light_cb.h"
 
 #include "donut/shaders/brdf.hlsli"
+#include "donut/shaders/surface.hlsli"
 
 /*
 float _GGX(SurfaceParams surface, float3 lightIncident, float3 viewIncident, float halfAngularSize)
