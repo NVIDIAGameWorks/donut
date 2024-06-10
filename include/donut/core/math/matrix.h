@@ -411,7 +411,7 @@ namespace donut::math
             return matrix(static_cast<T>(0));
         }
 
-        MATRIX_MEMBERS(T, 3, 4)
+        MATRIX_MEMBERS(T, 4, 4)
     };
 #pragma warning(pop)
 #undef MATRIX_MEMBERS
