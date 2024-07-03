@@ -184,6 +184,8 @@ nvrhi::ShaderLibraryHandle ShaderFactory::CreateStaticPlatformShaderLibrary(Stat
         case nvrhi::GraphicsAPI::VULKAN:
             shader = spirv;
             break;
+        default:
+            break;
     }
 
     return CreateStaticShaderLibrary(shader, pDefines);

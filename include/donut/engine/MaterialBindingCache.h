@@ -53,7 +53,6 @@ namespace donut::engine
         nvrhi::DeviceHandle m_Device;
         nvrhi::BindingLayoutHandle m_BindingLayout;
         std::unordered_map<const Material*, nvrhi::BindingSetHandle> m_BindingSets;
-        nvrhi::ShaderType m_ShaderType;
         std::vector<MaterialResourceBinding> m_BindingDesc;
         nvrhi::TextureHandle m_FallbackTexture;
         nvrhi::SamplerHandle m_Sampler;

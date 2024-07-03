@@ -256,7 +256,6 @@ void TemporalAntiAliasingPass::TemporalResolve(
         const nvrhi::Viewport viewportOutput = viewOutput->GetViewportState().viewports[0];
         
         TemporalAntiAliasingConstants taaConstants = {};
-        const float marginSize = 1.f;
         taaConstants.inputViewOrigin = float2(viewportInput.minX, viewportInput.minY);
         taaConstants.inputViewSize = float2(viewportInput.width(), viewportInput.height());
         taaConstants.outputViewOrigin = float2(viewportOutput.minX, viewportOutput.minY);

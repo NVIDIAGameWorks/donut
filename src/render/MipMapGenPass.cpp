@@ -179,8 +179,6 @@ void MipMapGenPass::Dispatch(nvrhi::ICommandList* commandList, int maxLOD)
     if (maxLOD > 0 && maxLOD < (int)nmipLevels)
         nmipLevels = maxLOD+1;
 
-    uint npasses = (uint32_t)ceilf((float)nmipLevels/(float)NUM_LODS);
-
     uint width = m_Texture->getDesc().width,
          height = m_Texture->getDesc().height;
 

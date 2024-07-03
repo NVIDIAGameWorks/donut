@@ -699,7 +699,7 @@ bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice)
     }
 
     if (m_GraphicsQueueFamily == -1 || 
-        m_PresentQueueFamily == -1 && !m_DeviceParams.headlessDevice ||
+        (m_PresentQueueFamily == -1 && !m_DeviceParams.headlessDevice) ||
         (m_ComputeQueueFamily == -1 && m_DeviceParams.enableComputeQueue) || 
         (m_TransferQueueFamily == -1 && m_DeviceParams.enableCopyQueue))
     {
@@ -976,6 +976,8 @@ bool DeviceManager_VK::createSwapChain()
             break;
         case vk::Format::eB8G8R8A8Srgb:
             imageFormats.push_back(vk::Format::eB8G8R8A8Unorm);
+            break;
+        default:
             break;
     }
 

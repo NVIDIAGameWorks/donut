@@ -34,7 +34,6 @@ MaterialBindingCache::MaterialBindingCache(
     nvrhi::ITexture* fallbackTexture,
     bool trackLiveness)
     : m_Device(device)
-    , m_ShaderType(shaderType)
     , m_BindingDesc(bindings)
     , m_FallbackTexture(fallbackTexture)
     , m_Sampler(sampler)

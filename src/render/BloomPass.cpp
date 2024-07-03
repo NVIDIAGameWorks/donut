@@ -45,8 +45,6 @@ using namespace donut::math;
 using namespace donut::engine;
 using namespace donut::render;
 
-const int NUM_BLOOM_PASSES = 1;
-
 BloomPass::BloomPass(
     nvrhi::IDevice* device,
     const std::shared_ptr<ShaderFactory>& shaderFactory,

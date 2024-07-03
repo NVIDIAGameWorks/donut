@@ -73,8 +73,8 @@ static ImVec4 getSeverityColor(donut::log::Severity severity)
 }
 
 ImGui_Console::ImGui_Console(std::shared_ptr<console::Interpreter> interpreter, Options const& options) 
-	: m_Interpreter(interpreter)
-	, m_Options(options)
+	: m_Options(options)
+	, m_Interpreter(interpreter)
 {
 	if (options.capture_log)
 	{
@@ -299,14 +299,14 @@ static void printColumns(ImGui_Console& console, std::vector<std::string> const&
 	};
 
 	size_t max_len = 0;
-	for (auto const candidate : items)
+	for (auto const& candidate : items)
 		max_len = std::max(max_len, candidate.size());
 
 	size_t line_width = computeLineWidth();
 	size_t ncolumns = line_width / max_len;
 
 	std::string line; int col = 1;
-	for (auto const candidate : items)
+	for (auto const& candidate : items)
 	{
 		if ((col % ncolumns) != 0)
 		{
@@ -398,6 +398,7 @@ int ImGui_Console::HistoryKeyCallback(ImGuiInputTextCallbackData* data)
 	{
 	case ImGuiKey_UpArrow: ++m_HistoryIterator; break;
 	case ImGuiKey_DownArrow: --m_HistoryIterator; break;
+	default: break;
 	}
 	if (currentPos != m_HistoryIterator)
 	{

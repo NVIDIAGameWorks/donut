@@ -80,7 +80,7 @@ static uint32_t makeKey(std::shared_ptr<AudioData const> sample)
                      bps      : 8;
         } pcm;
         uint32_t value;
-    } key = { 0 };
+    } key = { { 0 } };
 
     key.pcm.tag = (uint8_t)AudioData::Format::WAVE_PCM_INTEGER;
     key.pcm.channels = sample->nchannels;
@@ -221,7 +221,7 @@ struct Xaudio2Effect : public Effect
 {
     ~Xaudio2Effect() { }
 
-    std::weak_ptr<AudioData const> getSample() const;
+    std::weak_ptr<AudioData const> getSample() const override;
 
     void setVolume(float volume) override;
     void setPitch(float pitch) override;
@@ -229,9 +229,9 @@ struct Xaudio2Effect : public Effect
     void pause() override;
     void stop() override;
     float played() override;
-    void setEffectCallback(EffectCallback const & callback);
+    void setEffectCallback(EffectCallback const & callback) override;
 
-    virtual bool setEmitterTransform(donut::math::affine3 const & transform);
+    bool setEmitterTransform(donut::math::affine3 const & transform) override;
 
     std::shared_ptr<AudioData const > sample;
     bool stopped = false;
@@ -685,14 +685,11 @@ void Xaudio2Implementation::update()
             dsp.DstChannelCount = 2; // submix voices are all stereo only !
         }
 
-//log::info("update active=%d pool=%d", (int)m_activeVoices.size(), (int)m_voicePool.size());
-        int idx = 0;
-        for (auto it = m_activeVoices.begin(); it != m_activeVoices.end(); ++idx)
+        for (auto it = m_activeVoices.begin(); it != m_activeVoices.end(); )
         {
             std::shared_ptr<Xaudio2Effect> effect = std::dynamic_pointer_cast<Xaudio2Effect>(*it);
             if (effect)
             {
-//log::info("    effect %d played=%f", idx, effect->played());
                 XAUDIO2_VOICE_STATE xstate;
                 effect->voice->GetState(&xstate);
 

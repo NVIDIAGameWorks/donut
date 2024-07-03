@@ -187,7 +187,6 @@ static IesStatus ParseIesFile(char* fileData,
         return IesStatus::WrongDataSize;
     }
 
-    int numLamps = int(numericData[0]);
     int numVerticalAngles = int(numericData[3]);
     int numHorizontalAngles = int(numericData[4]);
     int headerSize = 13;

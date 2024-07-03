@@ -414,6 +414,7 @@ bool GltfImporter::Load(
         case cgltf_alpha_mode_opaque: matinfo->domain = useTransmission ? MaterialDomain::Transmissive : MaterialDomain::Opaque; break;
         case cgltf_alpha_mode_mask: matinfo->domain = useTransmission ? MaterialDomain::TransmissiveAlphaTested : MaterialDomain::AlphaTested; break;
         case cgltf_alpha_mode_blend: matinfo->domain = useTransmission ? MaterialDomain::TransmissiveAlphaBlended : MaterialDomain::AlphaBlended; break;
+        default: break;
         }
 
         materials[&material] = matinfo;
@@ -522,9 +523,7 @@ bool GltfImporter::Load(
             {
                 const cgltf_attribute& attr = prim.attributes[attr_idx];
 
-                // ReSharper disable once CppIncompleteSwitchStatement
-                // ReSharper disable once CppDefaultCaseNotHandledInSwitchStatement
-                switch(attr.type)  // NOLINT(clang-diagnostic-switch)
+                switch(attr.type)
                 {
                 case cgltf_attribute_type_position:
                     assert(attr.data->type == cgltf_type_vec3);
@@ -556,6 +555,8 @@ bool GltfImporter::Load(
                     assert(attr.data->type == cgltf_type_vec4);
                     assert(attr.data->component_type == cgltf_component_type_r_8u || attr.data->component_type == cgltf_component_type_r_16u || attr.data->component_type == cgltf_component_type_r_32f);
                     joint_weights = attr.data;
+                    break;
+                default:
                     break;
                 }
             }
@@ -1194,6 +1195,8 @@ bool GltfImporter::Load(
                 break;
             case cgltf_interpolation_type_cubic_spline:
                 dstSampler->SetInterpolationMode(animation::InterpolationMode::HermiteSpline);
+                break;
+            default:
                 break;
             }
 

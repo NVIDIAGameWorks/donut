@@ -111,7 +111,7 @@ ChunkId ChunkWriter::createStringsTableChunk()
 
     uint8_t * stringsData = chunkData + descSize + tableSize;
 
-    for (auto const it : m_stringsmap) {
+    for (auto const& it : m_stringsmap) {
 
         Desc::TableEntry & e = table[it.second];
 

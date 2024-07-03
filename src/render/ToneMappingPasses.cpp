@@ -61,8 +61,8 @@ ToneMappingPass::ToneMappingPass(
     const ICompositeView& compositeView,
     const CreateParameters& params)
     : m_Device(device)
-    , m_CommonPasses(commonPasses)
     , m_HistogramBins(params.histogramBins)
+    , m_CommonPasses(commonPasses)
     , m_FramebufferFactory(framebufferFactory)
 {
     assert(params.histogramBins <= 256);

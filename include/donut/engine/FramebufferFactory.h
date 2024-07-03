@@ -38,6 +38,7 @@ namespace donut::engine
 
     public:
         FramebufferFactory(nvrhi::IDevice* device) : m_Device(device) {}
+        virtual ~FramebufferFactory() = default;
 
         std::vector<nvrhi::TextureHandle> RenderTargets;
         nvrhi::TextureHandle DepthTarget;

@@ -465,13 +465,8 @@ void TextureCache::FinalizeTexture(
 
     texture->data.reset();
 
-    uint width = scaledWidth;
-    uint height = scaledHeight;
     for (uint mipLevel = texture->mipLevels; mipLevel < textureDesc.mipLevels; mipLevel++)
     {
-        width /= 2;
-        height /= 2;
-
         nvrhi::FramebufferHandle framebuffer = m_Device->createFramebuffer(nvrhi::FramebufferDesc()
             .addColorAttachment(nvrhi::FramebufferAttachment()
                 .setTexture(texture->texture)
@@ -577,7 +572,7 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFileAsync(
     texture->forceSRGB = sRGB;
     texture->path = path.generic_string();
 
-    executor.async([this, sRGB, texture, path]()
+    executor.async([this, texture, path]()
     {
         auto fileData = ReadTextureFile(path);
         if (fileData)
@@ -611,7 +606,7 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromMemoryAsync(
     texture->path = name;
     texture->mimeType = mimeType;
 
-    executor.async([this, sRGB, texture, data, mimeType]()
+    executor.async([this, texture, data, mimeType]()
         {
             if (FillTextureData(data, texture, "", mimeType))
             {

@@ -62,8 +62,8 @@ SsaoPass::SsaoPass(
     std::shared_ptr<ShaderFactory> shaderFactory,
     std::shared_ptr<CommonRenderPasses> commonPasses,
     const CreateParameters& params)
-    : m_CommonPasses(commonPasses)
-    , m_Device(device)
+    : m_Device(device)
+    , m_CommonPasses(commonPasses)
 {
     nvrhi::BufferDesc constantBufferDesc;
     constantBufferDesc.byteSize = sizeof(SsaoConstants);

@@ -32,6 +32,7 @@ namespace donut::engine
     class IShadowMap
     {
     public:
+        virtual ~IShadowMap() = default;
         virtual dm::float4x4 GetWorldToUvzwMatrix() const = 0;
         virtual const class ICompositeView& GetView() const = 0;
         virtual nvrhi::ITexture* GetTexture() const = 0;

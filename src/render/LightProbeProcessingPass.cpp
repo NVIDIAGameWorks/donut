@@ -65,8 +65,8 @@ LightProbeProcessingPass::LightProbeProcessingPass(
     uint32_t intermediateTextureSize,
     nvrhi::Format intermediateTextureFormat)
     : m_Device(device)
-    , m_CommonPasses(commonPasses)
     , m_IntermediateTextureSize(intermediateTextureSize)
+    , m_CommonPasses(commonPasses)
 {
     m_GeometryShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "cubemap_gs", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_cubemap_gs), nullptr, nvrhi::ShaderType::Geometry);
     m_MipPixelShader = shaderFactory->CreateAutoShader("donut/passes/light_probe.hlsl", "mip_ps", DONUT_MAKE_PLATFORM_SHADER(g_light_probe_mip_ps), nullptr, nvrhi::ShaderType::Pixel);
