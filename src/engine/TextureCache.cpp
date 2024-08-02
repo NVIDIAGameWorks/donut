@@ -744,25 +744,45 @@ void TextureCache::SetMaxTextureSize(uint32_t size)
 	m_MaxTextureSize = size;
 }
 
+#ifdef _MSC_VER 
+#define strcasecmp _stricmp
+#endif
+
 namespace donut::engine
 {
-    bool WriteBMPToFile(
-        const uint * pPixels,
-        const int2& dims,
-        const char* path)
-    {
-        assert(pPixels);
-        assert(all(dims > 0));
-        return stbi_write_bmp(path, dims.x, dims.y, 4, pPixels) != 0;
-    }
-
     bool SaveTextureToFile(
         nvrhi::IDevice* device,
         CommonRenderPasses* pPasses,
         nvrhi::ITexture* texture,
         nvrhi::ResourceStates textureState,
-        const char* fileName)
+        const char* fileName,
+        bool saveAlphaChannel)
     {
+        if (!fileName)
+            return false;
+
+        // Find the file's extension
+        char const* ext = strrchr(fileName, '.');
+
+        if (!ext)
+            return false; // No extension fond in the file name
+
+        // Determine the image format from the extension
+        enum { BMP, PNG, JPG, TGA } destFormat;
+        if (strcasecmp(ext, ".bmp") == 0)
+            destFormat = BMP;
+        else if (strcasecmp(ext, ".png") == 0)
+            destFormat = PNG;
+        else if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)
+            destFormat = JPG;
+        else if (strcasecmp(ext, ".tga") == 0)
+            destFormat = TGA;
+        else
+            return false; // Unknown file type
+        
+        if (destFormat == JPG)
+            saveAlphaChannel = false;
+
         nvrhi::TextureDesc desc = texture->getDesc();
         nvrhi::TextureHandle tempTexture;
         nvrhi::FramebufferHandle tempFramebuffer;
@@ -775,6 +795,7 @@ namespace donut::engine
             commandList->beginTrackingTextureState(texture, nvrhi::TextureSubresourceSet(0, 1, 0, 1), textureState);
         }
 
+        // If the source texture format is not RGBA8, create a temporary texture and blit into it to convert
         switch (desc.format)
         {
         case nvrhi::Format::RGBA8_UNORM:
@@ -793,6 +814,7 @@ namespace donut::engine
             pPasses->BlitTexture(commandList, tempFramebuffer, texture);
         }
 
+        // Create a staging texture to access the data from the CPU, copy the data into it
         nvrhi::StagingTextureHandle stagingTexture = device->createStagingTexture(desc, nvrhi::CpuAccessMode::Read);
         commandList->copyTexture(stagingTexture, nvrhi::TextureSlice(), tempTexture, nvrhi::TextureSlice());
 
@@ -805,28 +827,68 @@ namespace donut::engine
         commandList->close();
         device->executeCommandList(commandList);
 
+        // Map the staging texture
         size_t rowPitch = 0;
-        void* pData = device->mapStagingTexture(stagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch);
+        uint8_t const* pData = static_cast<uint8_t const*>(device->mapStagingTexture(
+            stagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch));
 
         if (!pData)
             return false;
 
-        uint32_t* newData = nullptr;
+        uint8_t* newData = nullptr;
+        int channels = saveAlphaChannel ? 4 : 3;
 
-        if (rowPitch != desc.width * 4)
+        // If the mapped data is not laid out in a densely packed format with the right number of channels,
+        // create a temporary buffer and move the data into the right layout for stb_image.
+        if (rowPitch != desc.width * channels)
         {
-            newData = new uint32_t[desc.width * desc.height];
+            newData = new uint8_t[desc.width * desc.height * channels];
 
-            for (uint32_t row = 0; row < desc.height; row++)
+            for (uint32_t row = 0; row < desc.height; ++row)
             {
-                memcpy(newData + row * desc.width, static_cast<char*>(pData) + row * rowPitch, desc.width * sizeof(uint32_t));
+                uint8_t* dstRow = newData + row * desc.width * channels;
+                uint8_t const* srcRow = pData + row * rowPitch;
+
+                if (channels == 4)
+                {
+                    // Simple row copy
+                    memcpy(dstRow, srcRow, desc.width * channels);
+                }
+                else
+                {
+                    // Convert 4 channels to 3
+                    for (uint32_t col = 0; col < desc.width; ++col)
+                    {
+                        dstRow[0] = srcRow[0];
+                        dstRow[1] = srcRow[1];
+                        dstRow[2] = srcRow[2];
+                        dstRow += 3;
+                        srcRow += 4;
+                    }
+                }
             }
 
             pData = newData;
         }
 
-        bool writeSuccess = WriteBMPToFile(static_cast<uint*>(pData), int2(desc.width, desc.height), fileName);
-
+        // Write the output image
+        bool writeSuccess = false;
+        switch(destFormat)
+        {
+            case BMP: 
+                writeSuccess = stbi_write_bmp(fileName, int(desc.width), int(desc.height), channels, pData) != 0;
+                break;
+            case PNG: 
+                writeSuccess = stbi_write_png(fileName, int(desc.width), int(desc.height), channels, pData, desc.width * channels) != 0;
+                break;
+            case JPG: 
+                writeSuccess = stbi_write_jpg(fileName, int(desc.width), int(desc.height), channels, pData, /* quality = */ 99) != 0;
+                break;
+            case TGA: 
+                writeSuccess = stbi_write_tga(fileName, int(desc.width), int(desc.height), channels, pData) != 0;
+                break;
+        }
+        
         if (newData)
         {
             delete[] newData;

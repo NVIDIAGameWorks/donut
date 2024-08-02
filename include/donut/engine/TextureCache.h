@@ -243,7 +243,9 @@ namespace donut::engine
 		Iterator end() { return Iterator(m_LoadedTexturesMutex, m_LoadedTextures.end()); }
     };
 
-    // Saves the contents of texture's slice 0 mip level 0 into a BMP file. 
+    // Saves the contents of texture's slice 0 mip level 0 into an image file.
+    // The image format is determined from the file's extension.
+    // Supported formats are: BMP, PNG, JPG, TGA.
     // Requires that no immediate command list is open at the time this function is called.
     // Creates and destroys temporary resources internally, so should NOT be called often.
     bool SaveTextureToFile(
@@ -251,5 +253,6 @@ namespace donut::engine
         CommonRenderPasses* pPasses,
         nvrhi::ITexture* texture,
         nvrhi::ResourceStates textureState,
-        const char* fileName);
+        const char* fileName,
+        bool saveAlphaChannel = true);
 }
