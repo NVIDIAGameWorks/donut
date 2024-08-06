@@ -34,9 +34,12 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 #                       [FOLDER <folder-in-visual-studio-solution>]
 #                       [OUTPUT_FORMAT (HEADER|BINARY)]
 #                       [DXIL <dxil-output-path>]
+#                       [DXIL_SLANG <dxil-output-path>]
 #                       [DXBC <dxbc-output-path>]
 #                       [SPIRV_DXC <spirv-output-path>]
-#                       [COMPILER_OPTIONS_DXBC <string>]  -- arguments passed to ShaderMake
+#                       [SPIRV_SLANG <spirv-output-path>]
+#                       [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake
+#                       [COMPILER_OPTIONS_DXBC <string>]
 #                       [COMPILER_OPTIONS_DXIL <string>]
 #                       [COMPILER_OPTIONS_SPIRV <string>]
 #                       [BYPRODUCTS_DXBC <list>]          -- list of generated files without paths,
@@ -45,9 +48,25 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 
 function(donut_compile_shaders)
     set(options "")
-    set(oneValueArgs TARGET CONFIG FOLDER OUTPUT_FORMAT DXIL DXBC SPIRV_DXC
-                     COMPILER_OPTIONS_DXBC COMPILER_OPTIONS_DXIL COMPILER_OPTIONS_SPIRV)
-    set(multiValueArgs SOURCES BYPRODUCTS_DXBC BYPRODUCTS_DXIL BYPRODUCTS_SPIRV)
+    set(oneValueArgs
+        COMPILER_OPTIONS
+        COMPILER_OPTIONS_DXBC
+        COMPILER_OPTIONS_DXIL
+        COMPILER_OPTIONS_SPIRV
+        CONFIG
+        DXBC
+        DXIL
+        DXIL_SLANG
+        FOLDER
+        OUTPUT_FORMAT
+        SPIRV_DXC
+        SPIRV_SLANG
+        TARGET)
+    set(multiValueArgs
+        BYPRODUCTS_DXBC
+        BYPRODUCTS_DXIL
+        BYPRODUCTS_SPIRV
+        SOURCES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -56,13 +75,18 @@ function(donut_compile_shaders)
     if (NOT params_CONFIG)
         message(FATAL_ERROR "donut_compile_shaders: CONFIG argument missing")
     endif()
+    if ((params_DXIL AND params_DXIL_SLANG) OR (params_SPIRV AND params_SPIRV_SLANG))
+        message(FATAL_ERROR "donut_compile_shaders: DXIL and DXIL_SLANG, or SPIRV and SPIRV_SLANG cannot be used together")
+    endif()
 
-    # just add the source files to the project as documents, they are built by the script
-    set_source_files_properties(${params_SOURCES} PROPERTIES VS_TOOL_OVERRIDE "None") 
+    if (NOT TARGET ${params_TARGET})
+        # just add the source files to the project as documents, they are built by the script
+        set_source_files_properties(${params_SOURCES} PROPERTIES VS_TOOL_OVERRIDE "None") 
 
-    add_custom_target(${params_TARGET}
-        DEPENDS ShaderMake
-        SOURCES ${params_SOURCES})
+        add_custom_target(${params_TARGET}
+            DEPENDS ShaderMake
+            SOURCES ${params_SOURCES})
+    endif()
 
     if (WIN32)
         set(use_api_arg --useAPI)
@@ -77,6 +101,11 @@ function(donut_compile_shaders)
     else()
         message(FATAL_ERROR "donut_compile_shaders: unsupported OUTPUT_FORMAT = '${params_OUTPUT_FORMAT}'")
     endif()
+
+    separate_arguments(params_COMPILER_OPTIONS NATIVE_COMMAND "${params_COMPILER_OPTIONS}")
+    separate_arguments(params_COMPILER_OPTIONS_DXIL NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXIL}")
+    separate_arguments(params_COMPILER_OPTIONS_DXBC NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXBC}")
+    separate_arguments(params_COMPILER_OPTIONS_SPIRV NATIVE_COMMAND "${params_COMPILER_OPTIONS_SPIRV}")
 
     if (params_DXIL AND DONUT_WITH_DX12)
         if (NOT DXC_PATH)
@@ -93,8 +122,37 @@ function(donut_compile_shaders)
            --shaderModel 6_5
            ${use_api_arg})
 
-        separate_arguments(params_COMPILER_OPTIONS_DXIL NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXIL}")
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXIL})
 
+        if ("${params_BYPRODUCTS_DXIL}" STREQUAL "")
+            add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
+        else()
+            set(byproducts_with_paths "")
+            foreach(relative_path IN LISTS params_BYPRODUCTS_DXIL)
+                list(APPEND byproducts_with_paths "${pasams_DXIL}/${relative_path}")
+            endforeach()
+            
+            add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand} BYPRODUCTS "${byproducts_with_paths}")
+        endif()
+    endif()
+
+    if (params_DXIL_SLANG AND DONUT_WITH_DX12)
+        if (NOT SLANGC_PATH)
+            message(FATAL_ERROR "donut_compile_shaders: Slang not found --- please set SLANGC_PATH to the full path to the Slang executable")
+        endif()
+        
+        set(compilerCommand ShaderMake
+           --config ${params_CONFIG}
+           --out ${params_DXIL_SLANG}
+           --platform DXIL
+           ${output_format_arg}
+           -I ${DONUT_SHADER_INCLUDE_DIR}
+           --compiler "${SLANGC_PATH}"
+           --slang
+           --shaderModel 6_5)
+
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
         list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXIL})
 
         if ("${params_BYPRODUCTS_DXIL}" STREQUAL "")
@@ -123,8 +181,7 @@ function(donut_compile_shaders)
            --compiler "${FXC_PATH}"
            ${use_api_arg})
 
-        separate_arguments(params_COMPILER_OPTIONS_DXBC NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXBC}")
-
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
         list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXBC})
 
         if ("${params_BYPRODUCTS_DXBC}" STREQUAL "")
@@ -156,8 +213,39 @@ function(donut_compile_shaders)
            --vulkanVersion 1.2
            ${use_api_arg})
 
-        separate_arguments(params_COMPILER_OPTIONS_SPIRV NATIVE_COMMAND "${params_COMPILER_OPTIONS_SPIRV}")
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_SPIRV})
 
+        if ("${params_BYPRODUCTS_SPIRV}" STREQUAL "")
+            add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
+        else()
+            set(byproducts_with_paths "")
+            foreach(relative_path IN LISTS params_BYPRODUCTS_SPIRV)
+                list(APPEND byproducts_with_paths "${params_SPIRV_DXC}/${relative_path}")
+            endforeach()
+
+            add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand} BYPRODUCTS "${byproducts_with_paths}")
+        endif()
+    endif()
+
+    if (params_SPIRV_SLANG AND DONUT_WITH_VULKAN)
+        if (NOT SLANGC_PATH)
+            message(FATAL_ERROR "donut_compile_shaders: Slang not found --- please set SLANGC_PATH to the full path to the Slang executable")
+        endif()
+        
+        set(compilerCommand ShaderMake
+           --config ${params_CONFIG}
+           --out ${params_SPIRV_SLANG}
+           --platform SPIRV
+           ${output_format_arg}
+           -I ${DONUT_SHADER_INCLUDE_DIR}
+           -D SPIRV
+           --compiler "${SLANGC_PATH}"
+           --slang
+           ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
+           --vulkanVersion 1.2)
+
+        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
         list(APPEND compilerCommand ${params_COMPILER_OPTIONS_SPIRV})
 
         if ("${params_BYPRODUCTS_SPIRV}" STREQUAL "")
@@ -193,17 +281,32 @@ endfunction()
 # donut_compile_shaders_all_platforms(TARGET <generated build target name>
 #                                     CONFIG <shader-config-file>
 #                                     SOURCES <list>
+#                                     OUTPUT_BASE <path>
+#                                     [SLANG]
 #                                     [FOLDER <folder-in-visual-studio-solution>]
 #                                     [OUTPUT_FORMAT (HEADER|BINARY)]
-#                                     [COMPILER_OPTIONS_DXBC <string>]  -- arguments passed to ShaderMake
+#                                     [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake
+#                                     [COMPILER_OPTIONS_DXBC <string>]
 #                                     [COMPILER_OPTIONS_DXIL <string>]
 #                                     [COMPILER_OPTIONS_SPIRV <string>]
 #                                     [BYPRODUCTS_NO_EXT <list>])
 
 function(donut_compile_shaders_all_platforms)
-    set(options "")
-    set(oneValueArgs TARGET CONFIG FOLDER OUTPUT_BASE OUTPUT_FORMAT COMPILER_OPTIONS_DXIL COMPILER_OPTIONS_DXBC COMPILER_OPTIONS_SPIRV)
-    set(multiValueArgs SOURCES BYPRODUCTS_NO_EXT)
+    set(options
+        SLANG)
+    set(oneValueArgs
+        COMPILER_OPTIONS
+        COMPILER_OPTIONS_DXBC
+        COMPILER_OPTIONS_DXIL
+        COMPILER_OPTIONS_SPIRV
+        CONFIG
+        FOLDER
+        OUTPUT_BASE
+        OUTPUT_FORMAT
+        TARGET)
+    set(multiValueArgs
+        BYPRODUCTS_NO_EXT
+        SOURCES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -238,19 +341,35 @@ function(donut_compile_shaders_all_platforms)
         list(APPEND byproducts_spirv "${byproduct}.spirv.h")
     endforeach()
     
-    donut_compile_shaders(TARGET ${params_TARGET}
-                          CONFIG ${params_CONFIG}
-                          FOLDER ${params_FOLDER}
-                          DXBC ${output_dxbc}
-                          DXIL ${output_dxil}
-                          SPIRV_DXC ${output_spirv}
-                          OUTPUT_FORMAT ${params_OUTPUT_FORMAT}
-                          COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
-                          COMPILER_OPTIONS_DXBC ${params_COMPILER_OPTIONS_DXBC}
-                          COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
-                          SOURCES ${params_SOURCES}
-                          BYPRODUCTS_DXBC ${byproducts_dxbc}
-                          BYPRODUCTS_DXIL ${byproducts_dxil}
-                          BYPRODUCTS_SPIRV ${byproducts_spirv})
+    if (params_SLANG)
+        donut_compile_shaders(TARGET ${params_TARGET}
+            CONFIG ${params_CONFIG}
+            FOLDER ${params_FOLDER}
+            DXIL_SLANG ${output_dxil}
+            SPIRV_SLANG ${output_spirv}
+            OUTPUT_FORMAT ${params_OUTPUT_FORMAT}
+            COMPILER_OPTIONS ${params_COMPILER_OPTIONS}
+            COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
+            COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
+            SOURCES ${params_SOURCES}
+            BYPRODUCTS_DXIL ${byproducts_dxil}
+            BYPRODUCTS_SPIRV ${byproducts_spirv})
+    else()
+        donut_compile_shaders(TARGET ${params_TARGET}
+            CONFIG ${params_CONFIG}
+            FOLDER ${params_FOLDER}
+            DXBC ${output_dxbc}
+            DXIL ${output_dxil}
+            SPIRV_DXC ${output_spirv}
+            OUTPUT_FORMAT ${params_OUTPUT_FORMAT}
+            COMPILER_OPTIONS ${params_COMPILER_OPTIONS}
+            COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
+            COMPILER_OPTIONS_DXBC ${params_COMPILER_OPTIONS_DXBC}
+            COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
+            SOURCES ${params_SOURCES}
+            BYPRODUCTS_DXBC ${byproducts_dxbc}
+            BYPRODUCTS_DXIL ${byproducts_dxil}
+            BYPRODUCTS_SPIRV ${byproducts_spirv})
+    endif()
 
 endfunction()
