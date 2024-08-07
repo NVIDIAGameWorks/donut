@@ -109,7 +109,8 @@ namespace donut::engine
     struct Material
     {
         std::string name;
-        int materialIndexInModel = -1;
+        std::string modelFileName;      // where this material originated from, e.g. GLTF file name
+        int materialIndexInModel = -1;  // index of the material in the model file
         MaterialDomain domain = MaterialDomain::Opaque;
         std::shared_ptr<LoadedTexture> baseOrDiffuseTexture; // metal-rough: base color; spec-gloss: diffuse color; .a = opacity (both modes)
         std::shared_ptr<LoadedTexture> metalRoughOrSpecularTexture; // metal-rough: ORM map; spec-gloss: specular color, .a = glossiness
