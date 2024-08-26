@@ -44,7 +44,8 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 #                       [COMPILER_OPTIONS_SPIRV <string>]
 #                       [BYPRODUCTS_DXBC <list>]          -- list of generated files without paths,
 #                       [BYPRODUCTS_DXIL <list>]             needed to get correct incremental builds when
-#                       [BYPRODUCTS_SPIRV <list>])           using static shaders with Ninja generator
+#                       [BYPRODUCTS_SPIRV <list>]            using static shaders with Ninja generator
+#                       [RELAXED_INCLUDES <list>])           relaxed include list to ignore non-visible headers (i.e. meant for c/cpp)
 
 function(donut_compile_shaders)
     set(options "")
@@ -66,7 +67,8 @@ function(donut_compile_shaders)
         BYPRODUCTS_DXBC
         BYPRODUCTS_DXIL
         BYPRODUCTS_SPIRV
-        SOURCES)
+        SOURCES
+		RELAXED_INCLUDES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -107,6 +109,19 @@ function(donut_compile_shaders)
     separate_arguments(params_COMPILER_OPTIONS_DXBC NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXBC}")
     separate_arguments(params_COMPILER_OPTIONS_SPIRV NATIVE_COMMAND "${params_COMPILER_OPTIONS_SPIRV}")
 
+    
+    set(include_dirs "")
+    set(relaxed_includes "")
+
+    # Loop over each path and append it with '-I ' prefix
+    foreach(include_dir ${DONUT_SHADER_INCLUDE_DIR})
+        set(include_dirs ${include_dirs} -I "${include_dir}")
+    endforeach()
+
+    foreach(include_dir ${params_RELAXED_INCLUDES})
+        set(relaxed_includes ${relaxed_includes} --relaxedInclude "${include_dir}")
+    endforeach()
+
     if (params_DXIL AND DONUT_WITH_DX12)
         if (NOT DXC_PATH)
             message(FATAL_ERROR "donut_compile_shaders: DXC not found --- please set DXC_PATH to the full path to the DXC binary")
@@ -117,7 +132,8 @@ function(donut_compile_shaders)
            --out ${params_DXIL}
            --platform DXIL
            ${output_format_arg}
-           -I ${DONUT_SHADER_INCLUDE_DIR}
+           ${include_dirs}
+           ${relaxed_includes}
            --compiler "${DXC_PATH}"
            --shaderModel 6_5
            ${use_api_arg})
@@ -130,7 +146,7 @@ function(donut_compile_shaders)
         else()
             set(byproducts_with_paths "")
             foreach(relative_path IN LISTS params_BYPRODUCTS_DXIL)
-                list(APPEND byproducts_with_paths "${pasams_DXIL}/${relative_path}")
+                list(APPEND byproducts_with_paths "${params_DXIL}/${relative_path}")
             endforeach()
             
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand} BYPRODUCTS "${byproducts_with_paths}")
@@ -147,7 +163,8 @@ function(donut_compile_shaders)
            --out ${params_DXIL_SLANG}
            --platform DXIL
            ${output_format_arg}
-           -I ${DONUT_SHADER_INCLUDE_DIR}
+           ${include_dirs}
+           ${relaxed_includes}
            --compiler "${SLANGC_PATH}"
            --slang
            --shaderModel 6_5)
@@ -160,7 +177,7 @@ function(donut_compile_shaders)
         else()
             set(byproducts_with_paths "")
             foreach(relative_path IN LISTS params_BYPRODUCTS_DXIL)
-                list(APPEND byproducts_with_paths "${pasams_DXIL}/${relative_path}")
+                list(APPEND byproducts_with_paths "${params_DXIL}/${relative_path}")
             endforeach()
             
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand} BYPRODUCTS "${byproducts_with_paths}")
@@ -177,7 +194,8 @@ function(donut_compile_shaders)
            --out ${params_DXBC}
            --platform DXBC
            ${output_format_arg}
-           -I ${DONUT_SHADER_INCLUDE_DIR}
+           ${include_dirs}
+           ${relaxed_includes}
            --compiler "${FXC_PATH}"
            ${use_api_arg})
 
@@ -189,7 +207,7 @@ function(donut_compile_shaders)
         else()
             set(byproducts_with_paths "")
             foreach(relative_path IN LISTS params_BYPRODUCTS_DXBC)
-                list(APPEND byproducts_with_paths "${pasams_DXBC}/${relative_path}")
+                list(APPEND byproducts_with_paths "${params_DXBC}/${relative_path}")
             endforeach()
 
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand} BYPRODUCTS "${byproducts_with_paths}")
@@ -206,7 +224,8 @@ function(donut_compile_shaders)
            --out ${params_SPIRV_DXC}
            --platform SPIRV
            ${output_format_arg}
-           -I ${DONUT_SHADER_INCLUDE_DIR}
+           ${include_dirs}
+           ${relaxed_includes}
            -D SPIRV
            --compiler "${DXC_SPIRV_PATH}"
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
@@ -238,7 +257,8 @@ function(donut_compile_shaders)
            --out ${params_SPIRV_SLANG}
            --platform SPIRV
            ${output_format_arg}
-           -I ${DONUT_SHADER_INCLUDE_DIR}
+           ${include_dirs}
+           ${relaxed_includes}
            -D SPIRV
            --compiler "${SLANGC_PATH}"
            --slang
