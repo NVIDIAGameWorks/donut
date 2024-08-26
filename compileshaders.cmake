@@ -68,7 +68,7 @@ function(donut_compile_shaders)
         BYPRODUCTS_DXIL
         BYPRODUCTS_SPIRV
         SOURCES
-		RELAXED_INCLUDES)
+        RELAXED_INCLUDES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
