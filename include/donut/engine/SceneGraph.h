@@ -30,6 +30,7 @@
 #include <utility>
 #include <functional>
 #include <filesystem>
+#include <stack>
 
 namespace donut::engine
 {
@@ -266,8 +267,7 @@ namespace donut::engine
         friend class SceneGraph;
         std::weak_ptr<SceneGraph> m_Graph;
         SceneGraphNode* m_Parent = nullptr;
-        std::shared_ptr<SceneGraphNode> m_FirstChild;
-        std::shared_ptr<SceneGraphNode> m_NextSibling;
+        std::vector<std::shared_ptr<SceneGraphNode>> m_Children;
         std::shared_ptr<SceneGraphLeaf> m_Leaf;
 
         std::string m_Name;
@@ -309,8 +309,8 @@ namespace donut::engine
         [[nodiscard]] SceneContentFlags GetSubgraphContentFlags() const { return m_SubgraphContent; }
 
         [[nodiscard]] SceneGraphNode* GetParent() const { return m_Parent; }
-        [[nodiscard]] SceneGraphNode* GetFirstChild() const { return m_FirstChild.get(); }
-        [[nodiscard]] SceneGraphNode* GetNextSibling() const { return m_NextSibling.get(); }
+        [[nodiscard]] SceneGraphNode* GetChild(size_t index) const { return (index < m_Children.size()) ? m_Children[index].get() : nullptr; }
+        [[nodiscard]] size_t GetNumChildren() const { return m_Children.size(); }
         [[nodiscard]] const std::shared_ptr<SceneGraphLeaf>& GetLeaf() const { return m_Leaf; }
 
         [[nodiscard]] const std::string& GetName() const { return m_Name; }
@@ -326,8 +326,6 @@ namespace donut::engine
         void SetTranslation(const dm::double3& translation);
         void SetLeaf(const std::shared_ptr<SceneGraphLeaf>& leaf);
         void SetName(const std::string& name);
-
-        void ReverseChildren();
 
         // Non-copyable and non-movable
         SceneGraphNode(const SceneGraphNode&) = delete;
@@ -362,6 +360,7 @@ namespace donut::engine
     private:
         SceneGraphNode* m_Current;
         SceneGraphNode* m_Scope;
+        std::stack<size_t> m_ChildIndices;
     public:
         SceneGraphWalker() = default;
 

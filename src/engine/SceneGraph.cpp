@@ -329,40 +329,22 @@ void SceneGraphNode::SetName(const std::string& name)
     m_Name = name;
 }
 
-void SceneGraphNode::ReverseChildren()
-{
-    // in-place linked list reverse algorithm
-    std::shared_ptr<SceneGraphNode> current, prev, next;
-    current = m_FirstChild;
-
-    while (current)
-    {
-        next = current->m_NextSibling;
-        current->m_NextSibling = prev;
-        prev = current;
-        current = next;
-    }
-
-    m_FirstChild = prev;
-}
-
 int SceneGraphWalker::Next(bool allowChildren)
 {
     if (!m_Current)
         return 0;
 
-    if (allowChildren)
+    // Try to move down to the children of the current node
+    if (allowChildren && m_Current->GetNumChildren() > 0)
     {
-        auto firstChild = m_Current->GetFirstChild();
-        if (firstChild)
-        {
-            m_Current = firstChild;
-            return 1;
-        }
+        m_ChildIndices.push(0);
+        m_Current = m_Current->GetChild(0);
+        return 1;
     }
 
     int depth = 0;
 
+    // No chlidren or not allowed to use them - try the next sibling or go up and try parent's sibling, etc.
     while (m_Current)
     {
         if (m_Current == m_Scope)
@@ -371,11 +353,19 @@ int SceneGraphWalker::Next(bool allowChildren)
             return depth;
         }
 
-        auto nextSibling = m_Current->GetNextSibling();
-        if (nextSibling)
+        if (!m_ChildIndices.empty())
         {
-            m_Current = nextSibling;
-            return depth;
+            size_t& siblingIndex = m_ChildIndices.top();
+            ++siblingIndex;
+
+            SceneGraphNode* parent = m_Current->GetParent();
+            if (siblingIndex < parent->GetNumChildren())
+            {
+                m_Current = parent->GetChild(siblingIndex);
+                return depth;
+            }
+            
+            m_ChildIndices.pop();
         }
 
         m_Current = m_Current->GetParent();
@@ -395,6 +385,9 @@ int SceneGraphWalker::Up()
         m_Current = nullptr;
         return 0;
     }
+
+    if (!m_ChildIndices.empty())
+        m_ChildIndices.pop();
 
     m_Current = m_Current->GetParent();
     return -1;
@@ -689,9 +682,8 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Attach(const std::shared_ptr<SceneGr
         // operating on an orphaned subgraph - do not copy or register anything
 
         assert(parent);
-        child->m_NextSibling = parent->m_FirstChild;
+        parent->m_Children.push_back(child);
         child->m_Parent = parent.get();
-        parent->m_FirstChild = child;
         return child;
     }
 
@@ -733,8 +725,7 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Attach(const std::shared_ptr<SceneGr
             // attach the copy to the new parent
             if (currentParent)
             {
-                copy->m_NextSibling = currentParent->m_FirstChild;
-                currentParent->m_FirstChild = copy;
+                currentParent->m_Children.push_back(copy);
             }
             else
             {
@@ -756,9 +747,6 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Attach(const std::shared_ptr<SceneGr
             {
                 while (deltaDepth++ < 0)
                 {
-                    // reverse the children list of this parent to make them consistent with the original
-                    currentParent->ReverseChildren();
-
                     // go up the new tree
                     currentParent = currentParent->m_Parent;
                 }
@@ -828,8 +816,7 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Attach(const std::shared_ptr<SceneGr
 
         if (parent)
         {
-            child->m_NextSibling = parent->m_FirstChild;
-            parent->m_FirstChild = child;
+            parent->m_Children.push_back(child);
         }
         else
         {
@@ -878,17 +865,25 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Detach(const std::shared_ptr<SceneGr
     // remove the node from its parent
     if (node->m_Parent)
     {
+        std::vector<std::shared_ptr<SceneGraphNode>>& siblings = node->m_Parent->m_Children;
+
         node->m_Parent->PropagateDirtyFlags(SceneGraphNode::DirtyFlags::SubgraphStructure);
 
-        std::shared_ptr<SceneGraphNode>* sibling = &node->m_Parent->m_FirstChild;
-        while (*sibling && *sibling != node)
-            sibling = &(*sibling)->m_NextSibling;
-        if (*sibling)
-            *sibling = node->m_NextSibling;
+        auto it = std::find(siblings.begin(), siblings.end(), node);
+
+        // ensure that the parent actually contains this node
+        if (it != siblings.end())
+        {
+            siblings.erase(it);
+        }
+        else
+        {
+            // if the graph is correct, we should never get here
+            assert(false);
+        }
     }
 
     node->m_Parent = nullptr;
-    node->m_NextSibling.reset();
 
     if (m_Root == node)
     {
@@ -929,16 +924,12 @@ std::shared_ptr<SceneGraphNode> SceneGraph::FindNode(const std::filesystem::path
             continue;
         }
 
-        SceneGraphNode* child;
-        for (child = current->GetFirstChild(); child; child = child->GetNextSibling())
-        {
-            if (child->GetName() == *pathComponent)
-                break;
-        }
+        auto found = std::find_if(current->m_Children.begin(), current->m_Children.end(),
+            [&pathComponent](std::shared_ptr<SceneGraphNode> const& item) { return item->GetName() == *pathComponent; });
 
-        if (child)
+        if (found != current->m_Children.end())
         {
-            current = child;
+            current = found->get();
             ++pathComponent;
             continue;
         }

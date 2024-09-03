@@ -385,8 +385,6 @@ void Scene::LoadSceneGraph(const Json::Value& nodeList, const std::shared_ptr<Sc
                 dst->GetName().c_str());
         }
     }
-
-    parent->ReverseChildren();
 }
 
 static dm::float4 ReadUpToFloat4(const Json::Value& node)

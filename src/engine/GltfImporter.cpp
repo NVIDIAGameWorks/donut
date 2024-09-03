@@ -1123,7 +1123,6 @@ bool GltfImporter::Load(
             // go up the stack until we find a node where some nodes are left
             while (context.srcCount == 0 && !stack.empty())
             {
-                context.dstParent->ReverseChildren();
                 context = stack.back();
                 stack.pop_back();
             }
@@ -1282,8 +1281,6 @@ bool GltfImporter::Load(
                 animationNode->SetName(srcAnim->name);
         }
     }
-
-    animationContainer->ReverseChildren();
 
     if (c_ForceRebuildTangents)
     {
