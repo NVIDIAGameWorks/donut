@@ -556,11 +556,25 @@ namespace donut::engine
         [[nodiscard]] bool HasPendingStructureChanges() const { return m_Root && (m_Root->m_Dirty & SceneGraphNode::DirtyFlags::SubgraphStructure) != 0; }
         [[nodiscard]] bool HasPendingTransformChanges() const { return m_Root && (m_Root->m_Dirty & (SceneGraphNode::DirtyFlags::SubgraphTransforms | SceneGraphNode::DirtyFlags::SubgraphPrevTransforms)) != 0; }
 
+        // Replaces the current root node of the graph with the new one.
         std::shared_ptr<SceneGraphNode> SetRootNode(const std::shared_ptr<SceneGraphNode>& root);
+        
+        // Attaches a node and its subgraph to the parent.
+        // If the node is already attached to this or other graph, a deep copy of the subgraph is made first.
         std::shared_ptr<SceneGraphNode> Attach(const std::shared_ptr<SceneGraphNode>& parent, const std::shared_ptr<SceneGraphNode>& child);
+        
+        // Creates a node holding the provided leaf and attaches it to the parent.
         std::shared_ptr<SceneGraphNode> AttachLeafNode(const std::shared_ptr<SceneGraphNode>& parent, const std::shared_ptr<SceneGraphLeaf>& leaf);
-        std::shared_ptr<SceneGraphNode> Detach(const std::shared_ptr<SceneGraphNode>& node);
+        
+        // Removes the node and its subgraph from the graph.
+        // When preserveOrder is 'false', the order of node's siblings may be changed during this operation to improve performance.
+        std::shared_ptr<SceneGraphNode> Detach(const std::shared_ptr<SceneGraphNode>& node, bool preserveOrder = false);
 
+        // Finds a node whose path (sequence of nested node names) matches the provided path,
+        // relative to the 'context' node or the root if 'context' is NULL.
+        // If the path starts with / the search starts at the root, and the 'context' parameter is ignored.
+        // Parent references with .. are supported.
+        // If multiple nodes within one parent have the same name matching that component of the path, only the first node will be considered.
         [[nodiscard]] std::shared_ptr<SceneGraphNode> FindNode(const std::filesystem::path& path, SceneGraphNode* context = nullptr) const;
         
         void Refresh(uint32_t frameIndex);

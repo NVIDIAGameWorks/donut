@@ -842,7 +842,7 @@ std::shared_ptr<SceneGraphNode> SceneGraph::AttachLeafNode(const std::shared_ptr
     return Attach(parent, node);
 }
 
-std::shared_ptr<SceneGraphNode> SceneGraph::Detach(const std::shared_ptr<SceneGraphNode>& node)
+std::shared_ptr<SceneGraphNode> SceneGraph::Detach(const std::shared_ptr<SceneGraphNode>& node, bool preserveOrder)
 {
     auto nodeGraph = node->m_Graph.lock();
 
@@ -869,12 +869,22 @@ std::shared_ptr<SceneGraphNode> SceneGraph::Detach(const std::shared_ptr<SceneGr
 
         node->m_Parent->PropagateDirtyFlags(SceneGraphNode::DirtyFlags::SubgraphStructure);
 
-        auto it = std::find(siblings.begin(), siblings.end(), node);
+        auto found = std::find(siblings.begin(), siblings.end(), node);
 
         // ensure that the parent actually contains this node
-        if (it != siblings.end())
+        if (found != siblings.end())
         {
-            siblings.erase(it);
+            auto last = siblings.end() - 1;
+            
+            if (preserveOrder || found == last)
+            {
+                siblings.erase(found);
+            }
+            else
+            {
+                std::swap(*found, *last);
+                siblings.erase(last);
+            }
         }
         else
         {
