@@ -50,6 +50,12 @@ target_sources(donut_app PRIVATE src/app/vulkan/DeviceManager_VK.cpp)
 target_link_libraries(donut_app nvrhi_vk Vulkan-Headers)
 endif()
 
+if(DONUT_WITH_AFTERMATH)
+target_sources(donut_app PRIVATE src/app/aftermath/AftermathCrashDump.cpp)
+endif()
+
+target_compile_definitions(donut_app PUBLIC DONUT_WITH_AFTERMATH=$<BOOL:${DONUT_WITH_AFTERMATH}>)
+
 target_link_libraries(donut_app nvrhi) # needs to come after nvrhi_d3d11 etc. for link order
 
 add_dependencies(donut_app donut_shaders)

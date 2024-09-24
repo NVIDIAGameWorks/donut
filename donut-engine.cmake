@@ -63,6 +63,7 @@ target_compile_definitions(donut_engine PUBLIC DONUT_WITH_DX11=$<BOOL:${DONUT_WI
 target_compile_definitions(donut_engine PUBLIC DONUT_WITH_DX12=$<BOOL:${DONUT_WITH_DX12}>)
 target_compile_definitions(donut_engine PUBLIC DONUT_WITH_VULKAN=$<BOOL:${DONUT_WITH_VULKAN}>)
 target_compile_definitions(donut_engine PUBLIC DONUT_WITH_STATIC_SHADERS=$<BOOL:${DONUT_WITH_STATIC_SHADERS}>)
+target_compile_definitions(donut_engine PUBLIC DONUT_WITH_AFTERMATH=$<BOOL:${DONUT_WITH_AFTERMATH}>)
 
 if (DONUT_WITH_STATIC_SHADERS)
 target_include_directories(donut_engine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")

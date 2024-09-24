@@ -225,6 +225,13 @@ bool DeviceManager::CreateInstance(const InstanceParameters& params)
             return false;
     }
 
+#if DONUT_WITH_AFTERMATH
+    if (params.enableAftermath)
+    {
+        m_AftermathCrashDumper.EnableCrashDumpTracking();
+    }
+#endif
+
     m_InstanceCreated = CreateInstanceInternal();
     return m_InstanceCreated;
 }
@@ -452,6 +459,9 @@ void DeviceManager::RunMessageLoop()
 {
     m_PreviousFrameTimestamp = glfwGetTime();
 
+#if DONUT_WITH_AFTERMATH
+    bool dumpingCrash = false;
+#endif
     while(!glfwWindowShouldClose(m_Window))
     {
 
@@ -459,13 +469,26 @@ void DeviceManager::RunMessageLoop()
 
         glfwPollEvents();
         UpdateWindowSize();
-        AnimateRenderPresent();
+        bool presentSuccess = AnimateRenderPresent();
+        if (!presentSuccess)
+        {
+#if DONUT_WITH_AFTERMATH
+            dumpingCrash = true;
+#endif
+            break;
+        }
     }
 
-    GetDevice()->waitForIdle();
+    bool waitSuccess = GetDevice()->waitForIdle();
+#if DONUT_WITH_AFTERMATH
+    dumpingCrash |= !waitSuccess;
+    // wait for Aftermath dump to complete before exiting application
+    if (dumpingCrash && m_DeviceParams.enableAftermath)
+        AftermathCrashDump::WaitForCrashDump();
+#endif
 }
 
-void DeviceManager::AnimateRenderPresent()
+bool DeviceManager::AnimateRenderPresent()
 {
     double curTime = glfwGetTime();
     double elapsedTime = curTime - m_PreviousFrameTimestamp;
@@ -484,8 +507,12 @@ void DeviceManager::AnimateRenderPresent()
             Render();
             if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
             if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
-            Present();
+            bool presentSuccess = Present();
             if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
+            if (!presentSuccess)
+            {
+                return false;
+            }
         }
     }
 
@@ -497,6 +524,7 @@ void DeviceManager::AnimateRenderPresent()
     m_PreviousFrameTimestamp = curTime;
 
     ++m_FrameIndex;
+    return true;
 }
 
 void DeviceManager::GetWindowDimensions(int& width, int& height)
@@ -508,6 +536,13 @@ void DeviceManager::GetWindowDimensions(int& width, int& height)
 const DeviceCreationParameters& DeviceManager::GetDeviceParams()
 {
     return m_DeviceParams;
+}
+
+donut::app::DeviceManager::DeviceManager()
+#if DONUT_WITH_AFTERMATH
+    : m_AftermathCrashDumper(*this)
+#endif
+{
 }
 
 void DeviceManager::UpdateWindowSize()
@@ -790,6 +825,11 @@ void DeviceManager::SetInformativeWindowTitle(const char* applicationName, const
         ss << extraInfo;
 
     SetWindowTitle(ss.str().c_str());
+}
+
+const char* donut::app::DeviceManager::GetWindowTitle()
+{
+    return m_WindowTitle.c_str();
 }
 
 donut::app::DeviceManager* donut::app::DeviceManager::Create(nvrhi::GraphicsAPI api)

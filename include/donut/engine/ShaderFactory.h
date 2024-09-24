@@ -28,6 +28,7 @@
 #include <nvrhi/nvrhi.h>
 #include <memory>
 #include <filesystem>
+#include <functional>
 
 
 namespace donut::vfs
@@ -97,6 +98,8 @@ namespace donut::engine
             std::shared_ptr<vfs::IFileSystem> fs,
 			const std::filesystem::path& basePath);
 
+        virtual ~ShaderFactory();
+
         void ClearCache();
 
         std::shared_ptr<vfs::IBlob> GetBytecode(const char* fileName, const char* entryName);
@@ -126,5 +129,8 @@ namespace donut::engine
         // Tries to create a shader library from one of the platform-specific bytecode arrays (calling CreateStaticPlatformShaderLibrary).
         // If that fails (e.g. there is no static bytecode), creates a shader library from the filesystem binary file (calling CreateShaderLibrary).
         nvrhi::ShaderLibraryHandle CreateAutoShaderLibrary(const char* fileName, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro>* pDefines);
+
+        // Looks up a shader binary based on a provided hash and the function used to generate it
+        std::pair<const void*, size_t> FindShaderFromHash(uint64_t hash, std::function<uint64_t(std::pair<const void*, size_t>, nvrhi::GraphicsAPI)> hashGenerator);
     };
 }

@@ -82,6 +82,10 @@ set(byproducts
 	passes/tonemapping_ps
 )
 
+if(DONUT_WITH_AFTERMATH)
+    set(compiler_options --embedPDB)
+endif()
+
 donut_compile_shaders_all_platforms(
 	TARGET donut_shaders
 	CONFIG ${CMAKE_CURRENT_LIST_DIR}/DonutShaders.cfg
@@ -90,4 +94,5 @@ donut_compile_shaders_all_platforms(
 	OUTPUT_FORMAT ${output_format}
 	SOURCES ${donut_shaders}
 	BYPRODUCTS_NO_EXT ${byproducts}
+    COMPILER_OPTIONS ${compiler_options}
 )

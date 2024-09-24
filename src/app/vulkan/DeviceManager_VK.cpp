@@ -118,7 +118,7 @@ protected:
     }
 
     bool BeginFrame() override;
-    void Present() override;
+    bool Present() override;
 
     const char *GetRendererString() const override
     {
@@ -207,7 +207,11 @@ private:
             VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
             VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
             VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
-            VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME
+            VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME,
+#if DONUT_WITH_AFTERMATH
+            VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME,
+            VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME,
+#endif
         },
     };
 
@@ -745,6 +749,7 @@ bool DeviceManager_VK::createDevice()
     bool vrsSupported = false;
     bool synchronization2Supported = false;
     bool maintenance4Supported = false;
+    bool aftermathSupported = false;
 
     log::message(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
     for (const auto& ext : enabledExtensions.device)
@@ -767,6 +772,8 @@ bool DeviceManager_VK::createDevice()
             maintenance4Supported = true;
         else if (ext == VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME)
             m_SwapChainMutableFormatSupported = true;
+        else if (ext == VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)
+            aftermathSupported = true;
     }
 
 #define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }  // NOLINT(cppcoreguidelines-macro-usage)
@@ -777,11 +784,14 @@ bool DeviceManager_VK::createDevice()
     auto bufferDeviceAddressFeatures = vk::PhysicalDeviceBufferDeviceAddressFeatures();
     // Determine support for maintenance4
     auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features();
+    // Determine support for aftermath
+    auto aftermathPhysicalFeatures = vk::PhysicalDeviceDiagnosticsConfigFeaturesNV();
 
     // Put the user-provided extension structure at the end of the chain
     pNext = m_DeviceParams.physicalDeviceFeatures2Extensions;
     APPEND_EXTENSION(true, bufferDeviceAddressFeatures);
     APPEND_EXTENSION(maintenance4Supported, maintenance4Features);
+    APPEND_EXTENSION(aftermathSupported, aftermathPhysicalFeatures);
 
     physicalDeviceFeatures2.pNext = pNext;
     m_VulkanPhysicalDevice.getFeatures2(&physicalDeviceFeatures2);
@@ -826,6 +836,10 @@ bool DeviceManager_VK::createDevice()
     auto vulkan13features = vk::PhysicalDeviceVulkan13Features()
         .setSynchronization2(synchronization2Supported)
         .setMaintenance4(maintenance4Features.maintenance4);
+    auto aftermathFeatures = vk::DeviceDiagnosticsConfigCreateInfoNV()
+        .setFlags(vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableResourceTracking
+            | vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableShaderDebugInfo
+            | vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableShaderErrorReporting);
 
     pNext = nullptr;
     APPEND_EXTENSION(accelStructSupported, accelStructFeatures)
@@ -835,6 +849,10 @@ bool DeviceManager_VK::createDevice()
     APPEND_EXTENSION(vrsSupported, vrsFeatures)
     APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
     APPEND_EXTENSION(physicalDeviceProperties.apiVersion < VK_API_VERSION_1_3 && maintenance4Supported, maintenance4Features);
+#if DONUT_WITH_AFTERMATH
+    if (aftermathPhysicalFeatures.diagnosticsConfig && m_DeviceParams.enableAftermath)
+        APPEND_EXTENSION(aftermathSupported, aftermathFeatures);
+#endif
 #undef APPEND_EXTENSION
 
     auto deviceFeatures = vk::PhysicalDeviceFeatures()
@@ -1028,6 +1046,12 @@ bool DeviceManager_VK::CreateInstanceInternal()
         enabledExtensions.instance.insert("VK_EXT_debug_report");
         enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
     }
+#if DONUT_WITH_AFTERMATH
+    if (m_DeviceParams.enableAftermath)
+    {
+        enabledExtensions.instance.insert("VK_EXT_debug_utils");
+    }
+#endif
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         m_dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
@@ -1129,6 +1153,9 @@ bool DeviceManager_VK::CreateDevice()
     deviceDesc.deviceExtensions = vecDeviceExt.data();
     deviceDesc.numDeviceExtensions = vecDeviceExt.size();
     deviceDesc.bufferDeviceAddressSupported = m_BufferDeviceAddressSupported;
+#if DONUT_WITH_AFTERMATH
+    deviceDesc.aftermathEnabled = m_DeviceParams.enableAftermath;
+#endif
 
     m_NvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
 
@@ -1240,7 +1267,7 @@ bool DeviceManager_VK::BeginFrame()
     return false;
 }
 
-void DeviceManager_VK::Present()
+bool DeviceManager_VK::Present()
 {
     const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
 
@@ -1258,7 +1285,10 @@ void DeviceManager_VK::Present()
                                 .setPImageIndices(&m_SwapChainIndex);
 
     const vk::Result res = m_PresentQueue.presentKHR(&info);
-    assert(res == vk::Result::eSuccess || res == vk::Result::eErrorOutOfDateKHR);
+    if (!(res == vk::Result::eSuccess || res == vk::Result::eErrorOutOfDateKHR))
+    {
+        return false;
+    }
 
     m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
 
@@ -1293,6 +1323,7 @@ void DeviceManager_VK::Present()
     m_NvrhiDevice->resetEventQuery(query);
     m_NvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
     m_FramesInFlight.push(query);
+    return true;
 }
 
 DeviceManager *DeviceManager::CreateVK()

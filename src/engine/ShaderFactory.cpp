@@ -24,6 +24,9 @@
 #include <donut/core/vfs/VFS.h>
 #include <donut/core/log.h>
 #include <ShaderMake/ShaderBlob.h>
+#if DONUT_WITH_AFTERMATH
+#include <donut/app/AftermathCrashDump.h>
+#endif
 
 using namespace std;
 using namespace donut::vfs;
@@ -36,6 +39,18 @@ ShaderFactory::ShaderFactory(nvrhi::DeviceHandle rendererInterface,
 	, m_fs(fs)
 	, m_basePath(basePath)
 {
+#if DONUT_WITH_AFTERMATH
+    if (m_Device->isAftermathEnabled())
+        m_Device->getAftermathCrashDumpHelper().registerShaderBinaryLookupCallback(this, std::bind(&ShaderFactory::FindShaderFromHash, this, std::placeholders::_1, std::placeholders::_2));
+#endif
+}
+
+ShaderFactory::~ShaderFactory()
+{
+#if DONUT_WITH_AFTERMATH
+    if (m_Device->isAftermathEnabled())
+        m_Device->getAftermathCrashDumpHelper().unRegisterShaderBinaryLookupCallback(this);
+#endif
 }
 
 void ShaderFactory::ClearCache()
@@ -212,4 +227,19 @@ nvrhi::ShaderLibraryHandle ShaderFactory::CreateAutoShaderLibrary(const char* fi
         return shader;
 
     return CreateShaderLibrary(fileName, pDefines);
+}
+
+std::pair<const void*, size_t> donut::engine::ShaderFactory::FindShaderFromHash(uint64_t hash, std::function<uint64_t(std::pair<const void*, size_t>, nvrhi::GraphicsAPI)> hashGenerator)
+{
+    for (auto& entry : m_BytecodeCache)
+    {
+        const void* shaderBytes = entry.second->data();
+        size_t shaderSize = entry.second->size();
+        uint64_t entryHash = hashGenerator(std::make_pair(shaderBytes, shaderSize), m_Device->getGraphicsAPI());
+        if (entryHash == hash)
+        {
+            return std::make_pair(shaderBytes, shaderSize);
+        }
+    }
+    return std::make_pair(nullptr, 0);
 }

@@ -131,7 +131,7 @@ protected:
         return 1;
     }
 
-    void Present() override;
+    bool Present() override;
 
 
 private:
@@ -320,6 +320,9 @@ bool DeviceManager_DX11::CreateDevice()
     nvrhi::d3d11::DeviceDesc deviceDesc;
     deviceDesc.messageCallback = &DefaultMessageCallback::GetInstance();
     deviceDesc.context = m_ImmediateContext;
+#if DONUT_WITH_AFTERMATH
+    deviceDesc.aftermathEnabled = m_DeviceParams.enableAftermath;
+#endif
 
     m_NvrhiDevice = nvrhi::d3d11::createDevice(deviceDesc);
 
@@ -490,9 +493,10 @@ void DeviceManager_DX11::Shutdown()
     }
 }
 
-void DeviceManager_DX11::Present()
+bool DeviceManager_DX11::Present()
 {
-    m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, 0);
+    HRESULT result = m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, 0);
+    return SUCCEEDED(result);
 }
 
 DeviceManager *DeviceManager::CreateD3D11()

@@ -124,7 +124,7 @@ protected:
     uint32_t GetCurrentBackBufferIndex() override;
     uint32_t GetBackBufferCount() override;
     bool BeginFrame() override;
-    void Present() override;
+    bool Present() override;
     void Shutdown() override;
 
 private:
@@ -343,6 +343,9 @@ bool DeviceManager_DX12::CreateDevice()
     deviceDesc.pGraphicsCommandQueue = m_GraphicsQueue;
     deviceDesc.pComputeCommandQueue = m_ComputeQueue;
     deviceDesc.pCopyCommandQueue = m_CopyQueue;
+#if DONUT_WITH_AFTERMATH
+    deviceDesc.aftermathEnabled = m_DeviceParams.enableAftermath;
+#endif
 
     m_NvrhiDevice = nvrhi::d3d12::createDevice(deviceDesc);
 
@@ -604,10 +607,10 @@ uint32_t DeviceManager_DX12::GetBackBufferCount()
     return m_SwapChainDesc.BufferCount;
 }
 
-void DeviceManager_DX12::Present()
+bool DeviceManager_DX12::Present()
 {
     if (!m_windowVisible)
-        return;
+        return true;
 
     auto bufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
@@ -615,11 +618,12 @@ void DeviceManager_DX12::Present()
     if (!m_DeviceParams.vsyncEnabled && m_FullScreenDesc.Windowed && m_TearingSupported)
         presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
 
-    m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, presentFlags);
+    HRESULT result = m_SwapChain->Present(m_DeviceParams.vsyncEnabled ? 1 : 0, presentFlags);
 
     m_FrameFence->SetEventOnCompletion(m_FrameCount, m_FrameFenceEvents[bufferIndex]);
     m_GraphicsQueue->Signal(m_FrameFence, m_FrameCount);
     m_FrameCount++;
+    return SUCCEEDED(result);
 }
 
 void DeviceManager_DX12::Shutdown()

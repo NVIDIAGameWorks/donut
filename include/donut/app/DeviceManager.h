@@ -65,6 +65,10 @@ freely, subject to the following restrictions:
 #include <nvrhi/vulkan.h>
 #endif
 
+#if DONUT_WITH_AFTERMATH
+#include "AftermathCrashDump.h"
+#endif
+
 #define GLFW_INCLUDE_NONE // Do not include any OpenGL headers
 #include <GLFW/glfw3.h>
 #ifdef _WIN32
@@ -90,6 +94,9 @@ namespace donut::app
     {
         bool enableDebugRuntime = false;
         bool headlessDevice = false;
+#if DONUT_WITH_AFTERMATH
+        bool enableAftermath = false;
+#endif
 
 #if DONUT_WITH_VULKAN
         std::vector<std::string> requiredVulkanInstanceExtensions;
@@ -233,7 +240,7 @@ namespace donut::app
 
         std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
 
-        DeviceManager() = default;
+        DeviceManager();
 
         void UpdateWindowSize();
 
@@ -243,7 +250,7 @@ namespace donut::app
         void Animate(double elapsedTime);
         void Render();
         void UpdateAverageFrameTime(double elapsedTime);
-        void AnimateRenderPresent();
+        bool AnimateRenderPresent();
         // device-specific methods
         virtual bool CreateInstanceInternal() = 0;
         virtual bool CreateDevice() = 0;
@@ -251,7 +258,7 @@ namespace donut::app
         virtual void DestroyDeviceAndSwapChain() = 0;
         virtual void ResizeSwapChain() = 0;
         virtual bool BeginFrame() = 0;
-        virtual void Present() = 0;
+        virtual bool Present() = 0;
 
     public:
         [[nodiscard]] virtual nvrhi::IDevice *GetDevice() const = 0;
@@ -295,6 +302,7 @@ namespace donut::app
 
         void SetWindowTitle(const char* title);
         void SetInformativeWindowTitle(const char* applicationName, const char* extraInfo = nullptr);
+        const char* GetWindowTitle();
 
         virtual bool IsVulkanInstanceExtensionEnabled(const char* extensionName) const { return false; }
         virtual bool IsVulkanDeviceExtensionEnabled(const char* extensionName) const { return false; }
@@ -319,6 +327,9 @@ namespace donut::app
         static DeviceManager* CreateVK();
 
         std::string m_WindowTitle;
+#if DONUT_WITH_AFTERMATH
+        AftermathCrashDump m_AftermathCrashDumper;
+#endif
     };
 
     class IRenderPass
