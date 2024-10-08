@@ -416,10 +416,23 @@ namespace donut::math
 	template<typename T>
 	quaternion<T> slerp(const quaternion<T>& a, const quaternion<T>& b, T u)
 	{
-		T theta = std::acos(dot(a, b));
-		if (theta <= T(0))
-			return a;
-		return (a * std::sin((T(1) - u) * theta) + b * std::sin(u * theta)) / std::sin(theta);
+        // shortest path on 4D sphere
+		T sign = T(1);
+		T fa = T(1) - u;
+		T fb = u;
+		T dp = dot(a, b);
+		if (dp < T(0))
+		{
+			sign = T(-1);
+			dp = -dp;
+		}
+		if (T(1) - dp > T(0.001))
+		{
+			T theta = std::acos(dp);
+			fa = std::sin(theta * fa) / std::sin(theta);
+			fb = std::sin(theta * fb) / std::sin(theta);
+		}
+		return fa * a + sign * fb * b;
 	}
 
 	template<typename T>
