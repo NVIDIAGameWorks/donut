@@ -117,6 +117,11 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice* device, std::shared_ptr<S
         textureDesc.debugName = "WhiteTexture2DArray";
         m_WhiteTexture2DArray = m_Device->createTexture(textureDesc);
 
+        textureDesc.dimension = nvrhi::TextureDimension::Texture3D;
+        textureDesc.debugName = "BlackTexture3D";
+        textureDesc.arraySize = 1;
+        m_BlackTexture3D = m_Device->createTexture(textureDesc);
+
         // Write the textures using a temporary CL
 
         nvrhi::CommandListHandle commandList = m_Device->createCommandList();
@@ -128,6 +133,7 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice* device, std::shared_ptr<S
         commandList->beginTrackingTextureState(m_BlackCubeMapArray, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
         commandList->beginTrackingTextureState(m_BlackTexture2DArray, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
         commandList->beginTrackingTextureState(m_WhiteTexture2DArray, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
+        commandList->beginTrackingTextureState(m_BlackTexture3D, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
 
         commandList->writeTexture(m_BlackTexture, 0, 0, &blackImage, 0);
         commandList->writeTexture(m_GrayTexture, 0, 0, &grayImage, 0);
@@ -138,6 +144,7 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice* device, std::shared_ptr<S
             commandList->writeTexture(m_BlackTexture2DArray, arraySlice, 0, &blackImage, 0);
             commandList->writeTexture(m_WhiteTexture2DArray, arraySlice, 0, &whiteImage, 0);
             commandList->writeTexture(m_BlackCubeMapArray, arraySlice, 0, &blackImage, 0);
+            commandList->writeTexture(m_BlackTexture3D, 0, 0, &blackImage, 0);
         }
         
         commandList->setPermanentTextureState(m_BlackTexture, nvrhi::ResourceStates::ShaderResource);
@@ -146,6 +153,7 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice* device, std::shared_ptr<S
         commandList->setPermanentTextureState(m_BlackCubeMapArray, nvrhi::ResourceStates::ShaderResource);
         commandList->setPermanentTextureState(m_BlackTexture2DArray, nvrhi::ResourceStates::ShaderResource);
         commandList->setPermanentTextureState(m_WhiteTexture2DArray, nvrhi::ResourceStates::ShaderResource);
+        commandList->setPermanentTextureState(m_BlackTexture3D, nvrhi::ResourceStates::ShaderResource);
         commandList->commitBarriers();
 
         commandList->close();
