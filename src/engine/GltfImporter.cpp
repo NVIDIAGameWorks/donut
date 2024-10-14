@@ -1183,12 +1183,16 @@ bool GltfImporter::Load(
         for (size_t s_idx = 0; s_idx < srcAnim->samplers_count; s_idx++)
         {
             const cgltf_animation_sampler* srcSampler = &srcAnim->samplers[s_idx];
+            const cgltf_animation_channel* srcChannel = &srcAnim->channels[s_idx];
             auto dstSampler = std::make_shared<animation::Sampler>();
 
             switch (srcSampler->interpolation)
             {
             case cgltf_interpolation_type_linear:
-                dstSampler->SetInterpolationMode(animation::InterpolationMode::Linear);
+                if (srcChannel->target_path == cgltf_animation_path_type_rotation)
+                    dstSampler->SetInterpolationMode(animation::InterpolationMode::Slerp);
+                else
+                    dstSampler->SetInterpolationMode(animation::InterpolationMode::Linear);
                 break;
             case cgltf_interpolation_type_step:
                 dstSampler->SetInterpolationMode(animation::InterpolationMode::Step);
