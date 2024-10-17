@@ -68,6 +68,7 @@ function(donut_compile_shaders)
         BYPRODUCTS_DXIL
         BYPRODUCTS_SPIRV
         SOURCES
+        INCLUDES
         RELAXED_INCLUDES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -117,6 +118,10 @@ function(donut_compile_shaders)
     foreach(include_dir ${DONUT_SHADER_INCLUDE_DIR})
         set(include_dirs ${include_dirs} -I "${include_dir}")
     endforeach()
+    
+	foreach(include_dir ${params_INCLUDES})
+		set(include_dirs ${include_dirs} -I "${include_dir}")
+	endforeach()    
 
     foreach(include_dir ${params_RELAXED_INCLUDES})
         set(relaxed_includes ${relaxed_includes} --relaxedInclude "${include_dir}")
