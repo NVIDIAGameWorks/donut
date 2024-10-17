@@ -45,6 +45,7 @@ cmake_dependent_option(DONUT_WITH_DX11 "Enable the DX11 version of Donut" ON "WI
 cmake_dependent_option(DONUT_WITH_DX12 "Enable the DX12 version of Donut" ON "WIN32" OFF)
 option(DONUT_WITH_VULKAN "Enable the Vulkan version of Donut" ON)
 option(DONUT_WITH_AFTERMATH "Enable Aftermath crash dump generation with Donut" OFF)
+option(DONUT_EMBED_SHADER_PDBS "Embed shader PDBs with shader binary files" OFF)
 
 option(DONUT_WITH_STATIC_SHADERS "Build Donut with statically linked shaders" OFF)
 

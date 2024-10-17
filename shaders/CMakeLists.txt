@@ -82,7 +82,7 @@ set(byproducts
 	passes/tonemapping_ps
 )
 
-if(DONUT_WITH_AFTERMATH)
+if(DONUT_WITH_AFTERMATH OR DONUT_EMBED_SHADER_PDBS)
     set(compiler_options --embedPDB)
 endif()
 
