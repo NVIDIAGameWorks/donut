@@ -83,7 +83,10 @@ groupshared VALUE_TYPE s_ReductionData[GROUP_SIZE][GROUP_SIZE];
     uint2 globalIdx : SV_DispatchThreadID,
     uint2 threadIdx : SV_GroupThreadID)
 {
-    VALUE_TYPE value = t_input.mips[0][globalIdx.xy];
+    uint texWidth, texHeight; 
+    t_input.GetDimensions(texWidth, texHeight);
+
+    VALUE_TYPE value = t_input.mips[0][min(globalIdx.xy, uint2(texWidth-1, texHeight-1))];
 
 #if MODE == MODE_MINMAX
     if (g_MipMapGen.dispatch==0)
