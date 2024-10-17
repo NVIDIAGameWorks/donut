@@ -794,7 +794,7 @@ void DeviceManager::SetWindowTitle(const char* title)
     m_WindowTitle = title;
 }
 
-void DeviceManager::SetInformativeWindowTitle(const char* applicationName, const char* extraInfo)
+void DeviceManager::SetInformativeWindowTitle(const char* applicationName, bool includeFramerate, const char* extraInfo)
 {
     std::stringstream ss;
     ss << applicationName;
@@ -816,7 +816,7 @@ void DeviceManager::SetInformativeWindowTitle(const char* applicationName, const
     ss << ")";
 
     double frameTime = GetAverageFrameTimeSeconds();
-    if (frameTime > 0)
+    if (includeFramerate && frameTime > 0)
     {
         ss << " - " << std::setprecision(4) << (1.0 / frameTime) << " FPS ";
     }
