@@ -301,7 +301,7 @@ namespace donut::app
         virtual ~DeviceManager() = default;
 
         void SetWindowTitle(const char* title);
-        void SetInformativeWindowTitle(const char* applicationName, bool includeFramerate, const char* extraInfo = nullptr);
+        void SetInformativeWindowTitle(const char* applicationName, bool includeFramerate = true, const char* extraInfo = nullptr);
         const char* GetWindowTitle();
 
         virtual bool IsVulkanInstanceExtensionEnabled(const char* extensionName) const { return false; }
