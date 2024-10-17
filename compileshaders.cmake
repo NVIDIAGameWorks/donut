@@ -38,14 +38,15 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 #                       [DXBC <dxbc-output-path>]
 #                       [SPIRV_DXC <spirv-output-path>]
 #                       [SPIRV_SLANG <spirv-output-path>]
-#                       [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake
-#                       [COMPILER_OPTIONS_DXBC <string>]
-#                       [COMPILER_OPTIONS_DXIL <string>]
-#                       [COMPILER_OPTIONS_SPIRV <string>]
+#                       [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake (not the compiler!)
+#                       [COMPILER_OPTIONS_DXBC <string>]  -- same, only DXBC specific
+#                       [COMPILER_OPTIONS_DXIL <string>]  -- same, only DXIL specific
+#                       [COMPILER_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
 #                       [BYPRODUCTS_DXBC <list>]          -- list of generated files without paths,
 #                       [BYPRODUCTS_DXIL <list>]             needed to get correct incremental builds when
 #                       [BYPRODUCTS_SPIRV <list>]            using static shaders with Ninja generator
-#                       [RELAXED_INCLUDES <list>])           relaxed include list to ignore non-visible headers (i.e. meant for c/cpp)
+#                       [INCLUDES <list>]                 -- include paths
+#                       [RELAXED_INCLUDES <list>])        -- list of included files for ShaderMake to ignore (e.g. c++)
 
 function(donut_compile_shaders)
     set(options "")
@@ -311,10 +312,12 @@ endfunction()
 #                                     [FOLDER <folder-in-visual-studio-solution>]
 #                                     [OUTPUT_FORMAT (HEADER|BINARY)]
 #                                     [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake
-#                                     [COMPILER_OPTIONS_DXBC <string>]
-#                                     [COMPILER_OPTIONS_DXIL <string>]
-#                                     [COMPILER_OPTIONS_SPIRV <string>]
-#                                     [BYPRODUCTS_NO_EXT <list>])
+#                                     [COMPILER_OPTIONS_DXBC <string>]  -- same, only DXBC specific
+#                                     [COMPILER_OPTIONS_DXIL <string>]  -- same, only DXIL specific
+#                                     [COMPILER_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
+#                                     [BYPRODUCTS_NO_EXT <list>])       -- see the comment above
+#                                     [INCLUDES <list>]                 -- include paths
+#                                     [RELAXED_INCLUDES <list>])        -- list of included files for ShaderMake to ignore (e.g. c++)
 
 function(donut_compile_shaders_all_platforms)
     set(options
@@ -331,7 +334,9 @@ function(donut_compile_shaders_all_platforms)
         TARGET)
     set(multiValueArgs
         BYPRODUCTS_NO_EXT
-        SOURCES)
+        SOURCES
+        INCLUDES
+        RELAXED_INCLUDES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -377,6 +382,8 @@ function(donut_compile_shaders_all_platforms)
             COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
             COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
             SOURCES ${params_SOURCES}
+            INCLUDES ${params_INCLUDES}
+            RELAXED_INCLUDES ${params_RELAXED_INCLUDES}
             BYPRODUCTS_DXIL ${byproducts_dxil}
             BYPRODUCTS_SPIRV ${byproducts_spirv})
     else()
@@ -392,6 +399,8 @@ function(donut_compile_shaders_all_platforms)
             COMPILER_OPTIONS_DXBC ${params_COMPILER_OPTIONS_DXBC}
             COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
             SOURCES ${params_SOURCES}
+            INCLUDES ${params_INCLUDES}
+            RELAXED_INCLUDES ${params_RELAXED_INCLUDES}
             BYPRODUCTS_DXBC ${byproducts_dxbc}
             BYPRODUCTS_DXIL ${byproducts_dxil}
             BYPRODUCTS_SPIRV ${byproducts_spirv})
