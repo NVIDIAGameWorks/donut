@@ -38,23 +38,27 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 #                       [DXBC <dxbc-output-path>]
 #                       [SPIRV_DXC <spirv-output-path>]
 #                       [SPIRV_SLANG <spirv-output-path>]
-#                       [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake (not the compiler!)
-#                       [COMPILER_OPTIONS_DXBC <string>]  -- same, only DXBC specific
-#                       [COMPILER_OPTIONS_DXIL <string>]  -- same, only DXIL specific
-#                       [COMPILER_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
-#                       [BYPRODUCTS_DXBC <list>]          -- list of generated files without paths,
-#                       [BYPRODUCTS_DXIL <list>]             needed to get correct incremental builds when
-#                       [BYPRODUCTS_SPIRV <list>]            using static shaders with Ninja generator
-#                       [INCLUDES <list>]                 -- include paths
-#                       [RELAXED_INCLUDES <list>])        -- list of included files for ShaderMake to ignore (e.g. c++)
+#                       [SHADERMAKE_OPTIONS <string>]       -- arguments passed to ShaderMake
+#                       [SHADERMAKE_OPTIONS_DXBC <string>]  -- same, only DXBC specific
+#                       [SHADERMAKE_OPTIONS_DXIL <string>]  -- same, only DXIL specific
+#                       [SHADERMAKE_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
+#                       [BYPRODUCTS_DXBC <list>]            -- list of generated files without paths,
+#                       [BYPRODUCTS_DXIL <list>]               needed to get correct incremental builds when
+#                       [BYPRODUCTS_SPIRV <list>]              using static shaders with Ninja generator
+#                       [INCLUDES <list>]                   -- include paths
+#                       [IGNORE_INCLUDES <list>])           -- list of included files for ShaderMake to ignore (e.g. c++)
 
 function(donut_compile_shaders)
     set(options "")
     set(oneValueArgs
-        COMPILER_OPTIONS
-        COMPILER_OPTIONS_DXBC
-        COMPILER_OPTIONS_DXIL
-        COMPILER_OPTIONS_SPIRV
+        SHADERMAKE_OPTIONS
+        SHADERMAKE_OPTIONS_DXBC
+        SHADERMAKE_OPTIONS_DXIL
+        SHADERMAKE_OPTIONS_SPIRV
+        COMPILER_OPTIONS        # deprecated
+        COMPILER_OPTIONS_DXBC   # deprecated
+        COMPILER_OPTIONS_DXIL   # deprecated
+        COMPILER_OPTIONS_SPIRV  # deprecated
         CONFIG
         DXBC
         DXIL
@@ -70,7 +74,8 @@ function(donut_compile_shaders)
         BYPRODUCTS_SPIRV
         SOURCES
         INCLUDES
-        RELAXED_INCLUDES)
+        IGNORE_INCLUDES
+        RELAXED_INCLUDES)       # deprecated
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -81,6 +86,15 @@ function(donut_compile_shaders)
     endif()
     if ((params_DXIL AND params_DXIL_SLANG) OR (params_SPIRV AND params_SPIRV_SLANG))
         message(FATAL_ERROR "donut_compile_shaders: DXIL and DXIL_SLANG, or SPIRV and SPIRV_SLANG cannot be used together")
+    endif()
+    if (params_COMPILER_OPTIONS OR params_COMPILER_OPTIONS_DXBC OR
+        params_COMPILER_OPTIONS_DXIL OR params_COMPILER_OPTIONS_SPIRV)
+        message(SEND_ERROR "donut_compile_shaders: The COMPILER_OPTIONS[_platform] arguments "
+                           "are deprecated, use SHADERMAKE_OPTIONS[_platform] instead")
+    endif()
+    if (params_RELAXED_INCLUDES)
+        message(SEND_ERROR "donut_compile_shaders: The RELAXED_INCLUDES argument "
+                           "is deprecated, use IGNORE_INCLUDES instead")
     endif()
 
     if (NOT TARGET ${params_TARGET})
@@ -106,14 +120,14 @@ function(donut_compile_shaders)
         message(FATAL_ERROR "donut_compile_shaders: unsupported OUTPUT_FORMAT = '${params_OUTPUT_FORMAT}'")
     endif()
 
-    separate_arguments(params_COMPILER_OPTIONS NATIVE_COMMAND "${params_COMPILER_OPTIONS}")
-    separate_arguments(params_COMPILER_OPTIONS_DXIL NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXIL}")
-    separate_arguments(params_COMPILER_OPTIONS_DXBC NATIVE_COMMAND "${params_COMPILER_OPTIONS_DXBC}")
-    separate_arguments(params_COMPILER_OPTIONS_SPIRV NATIVE_COMMAND "${params_COMPILER_OPTIONS_SPIRV}")
+    separate_arguments(params_SHADERMAKE_OPTIONS       NATIVE_COMMAND "${params_SHADERMAKE_OPTIONS}")
+    separate_arguments(params_SHADERMAKE_OPTIONS_DXIL  NATIVE_COMMAND "${params_SHADERMAKE_OPTIONS_DXIL}")
+    separate_arguments(params_SHADERMAKE_OPTIONS_DXBC  NATIVE_COMMAND "${params_SHADERMAKE_OPTIONS_DXBC}")
+    separate_arguments(params_SHADERMAKE_OPTIONS_SPIRV NATIVE_COMMAND "${params_SHADERMAKE_OPTIONS_SPIRV}")
 
     
     set(include_dirs "")
-    set(relaxed_includes "")
+    set(ignore_includes "")
 
     # Loop over each path and append it with '-I ' prefix
     foreach(include_dir ${DONUT_SHADER_INCLUDE_DIR})
@@ -124,8 +138,8 @@ function(donut_compile_shaders)
 		set(include_dirs ${include_dirs} -I "${include_dir}")
 	endforeach()    
 
-    foreach(include_dir ${params_RELAXED_INCLUDES})
-        set(relaxed_includes ${relaxed_includes} --relaxedInclude "${include_dir}")
+    foreach(include_file ${params_IGNORE_INCLUDES})
+        set(ignore_includes ${ignore_includes} --relaxedInclude "${include_file}")
     endforeach()
 
     if (params_DXIL AND DONUT_WITH_DX12)
@@ -139,13 +153,13 @@ function(donut_compile_shaders)
            --platform DXIL
            ${output_format_arg}
            ${include_dirs}
-           ${relaxed_includes}
+           ${ignore_includes}
            --compiler "${DXC_PATH}"
            --shaderModel 6_5
            ${use_api_arg})
 
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXIL})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_DXIL})
 
         if ("${params_BYPRODUCTS_DXIL}" STREQUAL "")
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
@@ -170,13 +184,13 @@ function(donut_compile_shaders)
            --platform DXIL
            ${output_format_arg}
            ${include_dirs}
-           ${relaxed_includes}
+           ${ignore_includes}
            --compiler "${SLANGC_PATH}"
            --slang
            --shaderModel 6_5)
 
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXIL})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_DXIL})
 
         if ("${params_BYPRODUCTS_DXIL}" STREQUAL "")
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
@@ -201,12 +215,12 @@ function(donut_compile_shaders)
            --platform DXBC
            ${output_format_arg}
            ${include_dirs}
-           ${relaxed_includes}
+           ${ignore_includes}
            --compiler "${FXC_PATH}"
            ${use_api_arg})
 
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_DXBC})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_DXBC})
 
         if ("${params_BYPRODUCTS_DXBC}" STREQUAL "")
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
@@ -231,15 +245,15 @@ function(donut_compile_shaders)
            --platform SPIRV
            ${output_format_arg}
            ${include_dirs}
-           ${relaxed_includes}
+           ${ignore_includes}
            -D SPIRV
            --compiler "${DXC_SPIRV_PATH}"
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
            --vulkanVersion 1.2
            ${use_api_arg})
 
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_SPIRV})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_SPIRV})
 
         if ("${params_BYPRODUCTS_SPIRV}" STREQUAL "")
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
@@ -264,15 +278,15 @@ function(donut_compile_shaders)
            --platform SPIRV
            ${output_format_arg}
            ${include_dirs}
-           ${relaxed_includes}
+           ${ignore_includes}
            -D SPIRV
            --compiler "${SLANGC_PATH}"
            --slang
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
            --vulkanVersion 1.2)
 
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS})
-        list(APPEND compilerCommand ${params_COMPILER_OPTIONS_SPIRV})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
+        list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_SPIRV})
 
         if ("${params_BYPRODUCTS_SPIRV}" STREQUAL "")
             add_custom_command(TARGET ${params_TARGET} PRE_BUILD COMMAND ${compilerCommand})
@@ -311,22 +325,26 @@ endfunction()
 #                                     [SLANG]
 #                                     [FOLDER <folder-in-visual-studio-solution>]
 #                                     [OUTPUT_FORMAT (HEADER|BINARY)]
-#                                     [COMPILER_OPTIONS <string>]       -- arguments passed to ShaderMake
-#                                     [COMPILER_OPTIONS_DXBC <string>]  -- same, only DXBC specific
-#                                     [COMPILER_OPTIONS_DXIL <string>]  -- same, only DXIL specific
-#                                     [COMPILER_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
-#                                     [BYPRODUCTS_NO_EXT <list>])       -- see the comment above
-#                                     [INCLUDES <list>]                 -- include paths
-#                                     [RELAXED_INCLUDES <list>])        -- list of included files for ShaderMake to ignore (e.g. c++)
+#                                     [SHADERMAKE_OPTIONS <string>]       -- arguments passed to ShaderMake
+#                                     [SHADERMAKE_OPTIONS_DXBC <string>]  -- same, only DXBC specific
+#                                     [SHADERMAKE_OPTIONS_DXIL <string>]  -- same, only DXIL specific
+#                                     [SHADERMAKE_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
+#                                     [BYPRODUCTS_NO_EXT <list>])         -- see the comment above
+#                                     [INCLUDES <list>]                   -- include paths
+#                                     [IGNORE_INCLUDES <list>])           -- list of included files for ShaderMake to ignore (e.g. c++)
 
 function(donut_compile_shaders_all_platforms)
     set(options
         SLANG)
     set(oneValueArgs
-        COMPILER_OPTIONS
-        COMPILER_OPTIONS_DXBC
-        COMPILER_OPTIONS_DXIL
-        COMPILER_OPTIONS_SPIRV
+        SHADERMAKE_OPTIONS
+        SHADERMAKE_OPTIONS_DXBC
+        SHADERMAKE_OPTIONS_DXIL
+        SHADERMAKE_OPTIONS_SPIRV
+        COMPILER_OPTIONS        # deprecated
+        COMPILER_OPTIONS_DXBC   # deprecated
+        COMPILER_OPTIONS_DXIL   # deprecated
+        COMPILER_OPTIONS_SPIRV  # deprecated
         CONFIG
         FOLDER
         OUTPUT_BASE
@@ -336,7 +354,8 @@ function(donut_compile_shaders_all_platforms)
         BYPRODUCTS_NO_EXT
         SOURCES
         INCLUDES
-        RELAXED_INCLUDES)
+        IGNORE_INCLUDES
+        RELAXED_INCLUDES)       # deprecated
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if (NOT params_TARGET)
@@ -347,6 +366,15 @@ function(donut_compile_shaders_all_platforms)
     endif()
     if (NOT params_OUTPUT_BASE)
         message(FATAL_ERROR "donut_compile_shaders_all_platforms: OUTPUT_BASE argument missing")
+    endif()
+    if (params_COMPILER_OPTIONS OR params_COMPILER_OPTIONS_DXBC OR
+        params_COMPILER_OPTIONS_DXIL OR params_COMPILER_OPTIONS_SPIRV)
+        message(SEND_ERROR "donut_compile_shaders_all_platforms: The COMPILER_OPTIONS[_platform] arguments "
+                           "are deprecated, use SHADERMAKE_OPTIONS[_platform] instead")
+    endif()
+    if (params_RELAXED_INCLUDES)
+        message(SEND_ERROR "donut_compile_shaders_all_platforms: The RELAXED_INCLUDES argument "
+                           "is deprecated, use IGNORE_INCLUDES instead")
     endif()
 
     if ("${params_OUTPUT_FORMAT}" STREQUAL "HEADER")
@@ -378,12 +406,12 @@ function(donut_compile_shaders_all_platforms)
             DXIL_SLANG ${output_dxil}
             SPIRV_SLANG ${output_spirv}
             OUTPUT_FORMAT ${params_OUTPUT_FORMAT}
-            COMPILER_OPTIONS ${params_COMPILER_OPTIONS}
-            COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
-            COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
+            SHADERMAKE_OPTIONS ${params_SHADERMAKE_OPTIONS}
+            SHADERMAKE_OPTIONS_DXIL ${params_SHADERMAKE_OPTIONS_DXIL}
+            SHADERMAKE_OPTIONS_SPIRV ${params_SHADERMAKE_OPTIONS_SPIRV}
             SOURCES ${params_SOURCES}
             INCLUDES ${params_INCLUDES}
-            RELAXED_INCLUDES ${params_RELAXED_INCLUDES}
+            IGNORE_INCLUDES ${params_IGNORE_INCLUDES}
             BYPRODUCTS_DXIL ${byproducts_dxil}
             BYPRODUCTS_SPIRV ${byproducts_spirv})
     else()
@@ -394,13 +422,13 @@ function(donut_compile_shaders_all_platforms)
             DXIL ${output_dxil}
             SPIRV_DXC ${output_spirv}
             OUTPUT_FORMAT ${params_OUTPUT_FORMAT}
-            COMPILER_OPTIONS ${params_COMPILER_OPTIONS}
-            COMPILER_OPTIONS_DXIL ${params_COMPILER_OPTIONS_DXIL}
-            COMPILER_OPTIONS_DXBC ${params_COMPILER_OPTIONS_DXBC}
-            COMPILER_OPTIONS_SPIRV ${params_COMPILER_OPTIONS_SPIRV}
+            SHADERMAKE_OPTIONS ${params_SHADERMAKE_OPTIONS}
+            SHADERMAKE_OPTIONS_DXIL ${params_SHADERMAKE_OPTIONS_DXIL}
+            SHADERMAKE_OPTIONS_DXBC ${params_SHADERMAKE_OPTIONS_DXBC}
+            SHADERMAKE_OPTIONS_SPIRV ${params_SHADERMAKE_OPTIONS_SPIRV}
             SOURCES ${params_SOURCES}
             INCLUDES ${params_INCLUDES}
-            RELAXED_INCLUDES ${params_RELAXED_INCLUDES}
+            IGNORE_INCLUDES ${params_IGNORE_INCLUDES}
             BYPRODUCTS_DXBC ${byproducts_dxbc}
             BYPRODUCTS_DXIL ${byproducts_dxil}
             BYPRODUCTS_SPIRV ${byproducts_spirv})

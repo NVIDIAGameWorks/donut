@@ -83,7 +83,7 @@ set(byproducts
 )
 
 if(DONUT_WITH_AFTERMATH OR DONUT_EMBED_SHADER_PDBS)
-    set(compiler_options --embedPDB)
+    set(shadermake_options --embedPDB)
 endif()
 
 donut_compile_shaders_all_platforms(
@@ -94,5 +94,5 @@ donut_compile_shaders_all_platforms(
 	OUTPUT_FORMAT ${output_format}
 	SOURCES ${donut_shaders}
 	BYPRODUCTS_NO_EXT ${byproducts}
-    COMPILER_OPTIONS ${compiler_options}
+    SHADERMAKE_OPTIONS ${shadermake_options}
 )
