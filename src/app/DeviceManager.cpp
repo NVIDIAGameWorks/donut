@@ -818,7 +818,9 @@ void DeviceManager::SetInformativeWindowTitle(const char* applicationName, bool 
     double frameTime = GetAverageFrameTimeSeconds();
     if (includeFramerate && frameTime > 0)
     {
-        ss << " - " << std::setprecision(4) << (1.0 / frameTime) << " FPS ";
+        double const fps = 1.0 / frameTime;
+        int const precision = (fps <= 20.0) ? 1 : 0;
+        ss << " - " << std::fixed << std::setprecision(precision) << fps << " FPS ";
     }
 
     if (extraInfo)
