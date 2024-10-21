@@ -197,7 +197,6 @@ void CommonRenderPasses::BlitTexture(nvrhi::ICommandList* commandList, const Bli
     const nvrhi::FramebufferDesc& targetFramebufferDesc = params.targetFramebuffer->getDesc();
     assert(targetFramebufferDesc.colorAttachments.size() == 1);
     assert(targetFramebufferDesc.colorAttachments[0].valid());
-    assert(!targetFramebufferDesc.depthAttachment.valid());
 
     const nvrhi::FramebufferInfoEx& fbinfo = params.targetFramebuffer->getFramebufferInfo();
     const nvrhi::TextureDesc& sourceDesc = params.sourceTexture->getDesc();
