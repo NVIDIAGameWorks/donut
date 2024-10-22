@@ -80,6 +80,7 @@ freely, subject to the following restrictions:
 
 #include <list>
 #include <functional>
+#include <optional>
 
 namespace donut::app
 {
@@ -169,10 +170,17 @@ namespace donut::app
 
     struct AdapterInfo
     {
+        typedef std::array<uint8_t, 16> UUID;
+        typedef std::array<uint8_t, 8> LUID;
+
         std::string name;
         uint32_t vendorID = 0;
         uint32_t deviceID = 0;
         uint64_t dedicatedVideoMemory = 0;
+
+        std::optional<UUID> uuid;
+        std::optional<LUID> luid;
+
 #if DONUT_WITH_DX11 || DONUT_WITH_DX12
         nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
 #endif

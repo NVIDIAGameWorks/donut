@@ -245,6 +245,11 @@ bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters
         adapterInfo.deviceID = desc.DeviceId;
         adapterInfo.dedicatedVideoMemory = desc.DedicatedVideoMemory;
 
+        AdapterInfo::LUID luid;
+        static_assert(luid.size() == sizeof(desc.AdapterLuid));
+        memcpy(luid.data(), &desc.AdapterLuid, luid.size());
+        adapterInfo.luid = luid;
+
         outAdapters.push_back(std::move(adapterInfo));
     }
 }

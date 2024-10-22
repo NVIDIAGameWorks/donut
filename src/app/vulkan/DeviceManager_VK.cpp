@@ -1070,7 +1070,12 @@ bool DeviceManager_VK::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
 
     for (auto physicalDevice : devices)
     {
-        vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+        vk::PhysicalDeviceProperties2 properties2;
+        vk::PhysicalDeviceIDProperties idProperties;
+        properties2.pNext = &idProperties;
+        physicalDevice.getProperties2(&properties2);
+
+        auto const& properties = properties2.properties;
         
         AdapterInfo adapterInfo;
         adapterInfo.name = properties.deviceName.data();
@@ -1078,6 +1083,19 @@ bool DeviceManager_VK::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
         adapterInfo.deviceID = properties.deviceID;
         adapterInfo.vkPhysicalDevice = physicalDevice;
         adapterInfo.dedicatedVideoMemory = 0;
+
+        AdapterInfo::UUID uuid;
+        static_assert(uuid.size() == idProperties.deviceUUID.size());
+        memcpy(uuid.data(), idProperties.deviceUUID.data(), uuid.size());
+        adapterInfo.uuid = uuid;
+
+        if (idProperties.deviceLUIDValid)
+        {
+            AdapterInfo::LUID luid;
+            static_assert(luid.size() == idProperties.deviceLUID.size());
+            memcpy(luid.data(), idProperties.deviceLUID.data(), luid.size());
+            adapterInfo.luid = luid;
+        }
 
         // Go through the memory types to figure out the amount of VRAM on this physical device.
         vk::PhysicalDeviceMemoryProperties memoryProperties = physicalDevice.getMemoryProperties();
