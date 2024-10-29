@@ -32,6 +32,11 @@ struct PlanarViewConstants
     float4x4    matViewToWorld;
     float4x4    matClipToWorld;
 
+    float4x4    matViewToClipNoOffset;
+    float4x4    matWorldToClipNoOffset;
+    float4x4    matClipToViewNoOffset;
+    float4x4    matClipToWorldNoOffset;
+
     float2      viewportOrigin;
     float2      viewportSize;
 

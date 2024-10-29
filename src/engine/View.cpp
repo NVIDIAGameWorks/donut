@@ -36,6 +36,10 @@ void IView::FillPlanarViewConstants(PlanarViewConstants& constants) const
     constants.matClipToView = GetInverseProjectionMatrix(true);
     constants.matViewToWorld = affineToHomogeneous(GetInverseViewMatrix());
     constants.matClipToWorld = GetInverseViewProjectionMatrix(true);
+    constants.matViewToClipNoOffset = GetProjectionMatrix(false);
+    constants.matWorldToClipNoOffset = GetViewProjectionMatrix(false);
+    constants.matClipToViewNoOffset = GetInverseProjectionMatrix(false);
+    constants.matClipToWorldNoOffset = GetInverseViewProjectionMatrix(false);
 
     nvrhi::ViewportState viewportState = GetViewportState();
     const nvrhi::Viewport& viewport = viewportState.viewports[0];
