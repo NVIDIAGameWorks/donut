@@ -224,6 +224,7 @@ namespace donut::app
 
     protected:
         bool m_windowVisible = false;
+        bool m_windowIsInFocus = true;
 
         DeviceCreationParameters m_DeviceParams;
         GLFWwindow *m_Window = nullptr;
@@ -251,6 +252,7 @@ namespace donut::app
         DeviceManager();
 
         void UpdateWindowSize();
+        bool ShouldRenderUnfocused() const;
 
         void BackBufferResizing();
         void BackBufferResized();
@@ -352,6 +354,7 @@ namespace donut::app
 
         virtual ~IRenderPass() = default;
 
+        virtual bool ShouldRenderUnfocused() { return false; }
         virtual void Render(nvrhi::IFramebuffer* framebuffer) { }
         virtual void Animate(float fElapsedTimeSeconds) { }
         virtual void BackBufferResizing() { }

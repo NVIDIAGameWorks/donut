@@ -455,6 +455,18 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime)
     }
 }
 
+bool DeviceManager::ShouldRenderUnfocused() const
+{
+    for (auto it = m_vRenderPasses.crbegin(); it != m_vRenderPasses.crend(); it++)
+    {
+        bool ret = (*it)->ShouldRenderUnfocused();
+        if (ret)
+            return true;
+    }
+
+    return false;
+}
+
 void DeviceManager::RunMessageLoop()
 {
     m_PreviousFrameTimestamp = glfwGetTime();
@@ -496,7 +508,7 @@ bool DeviceManager::AnimateRenderPresent()
 	JoyStickManager::Singleton().EraseDisconnectedJoysticks();
 	JoyStickManager::Singleton().UpdateAllJoysticks(m_vRenderPasses);
 
-    if (m_windowVisible)
+    if (m_windowVisible && (m_windowIsInFocus || ShouldRenderUnfocused()))
     {
         if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
         Animate(elapsedTime);
@@ -559,6 +571,8 @@ void DeviceManager::UpdateWindowSize()
     }
 
     m_windowVisible = true;
+
+    m_windowIsInFocus = glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) == 1;
 
     if (int(m_DeviceParams.backBufferWidth) != width || 
         int(m_DeviceParams.backBufferHeight) != height ||
