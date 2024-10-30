@@ -864,6 +864,10 @@ bool DeviceManager_VK::createDevice()
         .setImageCubeArray(true)
         .setDualSrcBlend(true);
 
+    // Add a Vulkan 1.1 structure with default settings to make it easier for apps to modify them
+    auto vulkan11features = vk::PhysicalDeviceVulkan11Features()
+        .setPNext(pNext);
+
     auto vulkan12features = vk::PhysicalDeviceVulkan12Features()
         .setDescriptorIndexing(true)
         .setRuntimeDescriptorArray(true)
@@ -872,7 +876,7 @@ bool DeviceManager_VK::createDevice()
         .setTimelineSemaphore(true)
         .setShaderSampledImageArrayNonUniformIndexing(true)
         .setBufferDeviceAddress(bufferDeviceAddressFeatures.bufferDeviceAddress)
-        .setPNext(pNext);
+        .setPNext(&vulkan11features);
 
     auto layerVec = stringSetToVector(enabledExtensions.layers);
     auto extVec = stringSetToVector(enabledExtensions.device);
