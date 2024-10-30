@@ -173,6 +173,10 @@ TemporalAntiAliasingPass::TemporalAntiAliasingPass(
             nvrhi::BindingSetItem::Texture_UAV(0, params.resolvedColor),
             nvrhi::BindingSetItem::Texture_UAV(1, params.feedback2)
         };
+        
+        m_HasHistoryClampRelaxTexture = params.historyClampRelax != nullptr;
+        if (params.historyClampRelax != nullptr)
+            bindingSetDesc.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(3, params.historyClampRelax));
 
         nvrhi::utils::CreateBindingSetAndLayout(device, nvrhi::ShaderType::Compute, 0, bindingSetDesc, m_ResolveBindingLayout, m_ResolveBindingSet);
      
@@ -268,6 +272,7 @@ void TemporalAntiAliasingPass::TemporalResolve(
         taaConstants.newFrameWeight = feedbackIsValid ? params.newFrameWeight : 1.f;
         taaConstants.pqC = dm::clamp(params.maxRadiance, 1e-4f, 1e8f);
         taaConstants.invPqC = 1.f / taaConstants.pqC;
+        taaConstants.useHistoryClampRelax = (params.useHistoryClampRelax && m_HasHistoryClampRelaxTexture) ? 1 : 0;
         commandList->writeBuffer(m_TemporalAntiAliasingCB, &taaConstants, sizeof(taaConstants));
 
         int2 viewportSize = int2(taaConstants.outputViewSize);

@@ -52,6 +52,11 @@ namespace donut::render
         float clampingFactor = 1.0f;
         float maxRadiance = 10000.f;
         bool enableHistoryClamping = true;
+
+        // Requires CreateParameters::historyClampRelax single channel [0, 1] mask to be provided. 
+        // For texels with mask value of 0 the behavior is unchanged; for texels with mask value > 0, 
+        // 'newFrameWeight' will be reduced and 'clampingFactor' will be increased proportionally. 
+        bool useHistoryClampRelax = false;
     };
 
     class TemporalAntiAliasingPass
@@ -81,6 +86,8 @@ namespace donut::render
         dm::float2 m_R2Jitter;
         TemporalAntiAliasingJitter m_Jitter;
 
+        bool m_HasHistoryClampRelaxTexture;
+
     public:
         struct CreateParameters
         {
@@ -90,6 +97,7 @@ namespace donut::render
             nvrhi::ITexture* resolvedColor = nullptr;
             nvrhi::ITexture* feedback1 = nullptr;
             nvrhi::ITexture* feedback2 = nullptr;
+            nvrhi::ITexture* historyClampRelax = nullptr;
             bool useCatmullRomFilter = true;
             uint32_t motionVectorStencilMask = 0;
             uint32_t numConstantBufferVersions = 16;

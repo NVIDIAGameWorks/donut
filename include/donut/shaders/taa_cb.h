@@ -45,6 +45,9 @@ struct TemporalAntiAliasingConstants
     float invPqC;
 
     uint stencilMask;
+    uint useHistoryClampRelax;
+    uint padding0;
+    uint padding1;
 };
 
 #endif // TAA_CB_H

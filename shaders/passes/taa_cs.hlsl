@@ -45,6 +45,9 @@ SamplerState s_Sampler : register(s0);
 RWTexture2D<float4> u_ColorOutput : register(u0);
 RWTexture2D<float4> u_FeedbackOutput : register(u1);
 
+Texture2D<float> t_HistoryClampRelaxMask : register(t3);
+
+
 #define GROUP_X 16
 #define GROUP_Y 16
 #define BUFFER_X (GROUP_X + 3)
@@ -228,12 +231,31 @@ void main(
         }
     } 
 
+    float clampingFactor = g_TemporalAA.clampingFactor;
+    float newFrameWeight = g_TemporalAA.newFrameWeight;
+    float historyClampRelax = 0;
+    if (g_TemporalAA.useHistoryClampRelax)
+    {
+        // Simple 4-tap 16ish-pixel blur; historyClampRelax is 0 where there's no 'relax' and 1 when there's
+        // 'full relax'; for no blur just use 'historyClampRelax = t_HistoryClampRelaxMask[outputPixelPosition];'
+        float2 centerUV = (float2(outputPixelPosition.xy) + 0.5) * g_TemporalAA.outputTextureSizeInv;
+        float2 offset = g_TemporalAA.outputTextureSizeInv * 0.4; // hand tuned filter width for best effect
+        historyClampRelax =saturate((t_HistoryClampRelaxMask.SampleLevel(s_Sampler, centerUV + offset * float2(-1,-1), 0)
+                           +t_HistoryClampRelaxMask.SampleLevel(s_Sampler, centerUV + offset * float2(+1,-1), 0)
+                           +t_HistoryClampRelaxMask.SampleLevel(s_Sampler, centerUV + offset * float2(-1,+1), 0)
+                           +t_HistoryClampRelaxMask.SampleLevel(s_Sampler, centerUV + offset * float2(+1,+1), 0)) * 0.4); // hand tuned multiplier
+
+        // Slow convergence speed to TAA local factors (hand tuned heuristics)
+        clampingFactor *= (1.0+historyClampRelax*1.5);  // extend the clamp range
+        newFrameWeight /= (1.0+historyClampRelax*0.5);  // reduce the new sample weight
+    }
+
     float2 longestMV = s_MotionVectors[longestMVPos.y][longestMVPos.x];
 
     colorMoment1 /= 9.0;
     colorMoment2 /= 9.0;
     float3 colorVariance = colorMoment2 - colorMoment1 * colorMoment1;
-    float3 colorSigma = sqrt(max(0, colorVariance)) * g_TemporalAA.clampingFactor;
+    float3 colorSigma = sqrt(max(0, colorVariance)) * clampingFactor;
     float3 colorMin = colorMoment1 - colorSigma;
     float3 colorMax = colorMoment1 + colorSigma;
 
@@ -243,7 +265,7 @@ void main(
     float2 sourcePos = float2(outputPixelPosition.xy) + longestMV + 0.5;
 
     float3 resultPQ;
-    if (g_TemporalAA.newFrameWeight < 1.0 && all(sourcePos.xy > g_TemporalAA.outputViewOrigin) 
+    if (newFrameWeight < 1.0 && all(sourcePos.xy > g_TemporalAA.outputViewOrigin) 
         && all(sourcePos.xy < g_TemporalAA.outputViewOrigin + g_TemporalAA.outputViewSize))
     {
 #if USE_CATMULL_ROM_FILTER
@@ -255,7 +277,7 @@ void main(
         // Clamp the old color to the new color distribution
 
         float3 historyClamped = history;
-        if (g_TemporalAA.clampingFactor >= 0)
+        if (clampingFactor >= 0)
         {
             historyClamped = min(colorMax, max(colorMin, history));
         }
@@ -266,7 +288,7 @@ void main(
         float2 distanceToLowResPixel = inputPos - float2(inputPosInt);
         float upscalingFactor = g_TemporalAA.outputOverInputViewSize.x;
         float sampleWeight = saturate(1.0 - upscalingFactor * dot(distanceToLowResPixel, distanceToLowResPixel));
-        float blendWeight = saturate(max(motionWeight, sampleWeight) * g_TemporalAA.newFrameWeight);
+        float blendWeight = saturate(max(motionWeight, sampleWeight) * newFrameWeight);
 
         resultPQ = lerp(historyClamped, thisPixelColor, blendWeight);
     }
