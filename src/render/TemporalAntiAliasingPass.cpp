@@ -176,7 +176,14 @@ TemporalAntiAliasingPass::TemporalAntiAliasingPass(
         
         m_HasHistoryClampRelaxTexture = params.historyClampRelax != nullptr;
         if (params.historyClampRelax != nullptr)
+        {
             bindingSetDesc.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(3, params.historyClampRelax));
+        }
+        else
+        {
+            // No relax mask, but we need to bind something to match the shader binding slots
+            bindingSetDesc.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(3, params.unresolvedColor));
+        }
 
         nvrhi::utils::CreateBindingSetAndLayout(device, nvrhi::ShaderType::Compute, 0, bindingSetDesc, m_ResolveBindingLayout, m_ResolveBindingSet);
      
