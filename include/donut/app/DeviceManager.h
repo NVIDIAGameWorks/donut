@@ -99,6 +99,9 @@ namespace donut::app
         bool enableAftermath = false;
 #endif
 
+        // Severity of the information log messages from the device manager, like the device name or enabled extensions.
+        log::Severity infoLogSeverity = log::Severity::Info;
+
 #if DONUT_WITH_VULKAN
         std::vector<std::string> requiredVulkanInstanceExtensions;
         std::vector<std::string> requiredVulkanLayers;
@@ -127,9 +130,6 @@ namespace donut::app
         bool enableRayTracingExtensions = false; // for vulkan
         bool enableComputeQueue = false;
         bool enableCopyQueue = false;
-
-        // Severity of the information log messages from the device manager, like the device name or enabled extensions.
-        log::Severity infoLogSeverity = log::Severity::Info;
 
         // Index of the adapter (DX11, DX12) or physical device (Vk) on which to initialize the device.
         // Negative values mean automatic detection.
