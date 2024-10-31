@@ -235,7 +235,7 @@ namespace donut::engine
         [[nodiscard]] dm::frustum GetViewFrustum() const override
         {
             dm::frustum left = LeftView.GetViewFrustum();
-            dm::frustum right = LeftView.GetViewFrustum();
+            dm::frustum right = RightView.GetViewFrustum();
 
             // not robust but should work for regular stereo views
             left.planes[dm::frustum::RIGHT_PLANE] = right.planes[dm::frustum::RIGHT_PLANE];
