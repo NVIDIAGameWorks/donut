@@ -94,6 +94,7 @@ namespace donut::app
     struct InstanceParameters
     {
         bool enableDebugRuntime = false;
+        bool enableGPUValidation = false;
         bool headlessDevice = false;
 #if DONUT_WITH_AFTERMATH
         bool enableAftermath = false;

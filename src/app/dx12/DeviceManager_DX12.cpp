@@ -265,6 +265,15 @@ bool DeviceManager_DX12::CreateDevice()
         pDebug->EnableDebugLayer();
     }
 
+    if (m_DeviceParams.enableGPUValidation)
+    {
+        RefCountPtr<ID3D12Debug3> debugController3;
+        HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&debugController3));
+        HR_RETURN(hr); 
+
+        debugController3->SetEnableGPUBasedValidation(TRUE);
+    }
+    
     int adapterIndex = m_DeviceParams.adapterIndex;
     if (adapterIndex < 0)
         adapterIndex = 0;
