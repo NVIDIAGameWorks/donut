@@ -212,6 +212,7 @@ namespace donut::engine
         uint32_t totalVertices = 0;
         int globalMeshIndex = 0;
         nvrhi::rt::AccelStructHandle accelStruct; // for use by applications
+        bool isSkinPrototype = false;
 
         virtual ~MeshInfo() = default;
     };

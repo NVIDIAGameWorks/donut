@@ -795,6 +795,8 @@ bool GltfImporter::Load(
 
             if (joint_indices)
             {
+                minfo->isSkinPrototype = true;
+
                 assert(joint_indices->count == positions->count);
 
                 auto [jointSrc, jointStride] = cgltf_buffer_iterator(joint_indices, 0);
@@ -826,6 +828,8 @@ bool GltfImporter::Load(
 
             if (joint_weights)
             {
+                minfo->isSkinPrototype = true;
+
                 assert(joint_weights->count == positions->count);
 
                 auto [weightSrc, weightStride] = cgltf_buffer_iterator(joint_weights, 0);
@@ -1139,6 +1143,7 @@ bool GltfImporter::Load(
         if (found != meshMap.end())
         {
             prorotypeMesh = found->second;
+            assert( prorotypeMesh->isSkinPrototype );
 
             auto skinnedInstance = std::make_shared<SkinnedMeshInstance>(m_SceneTypeFactory, prorotypeMesh);
             skinnedInstance->joints.resize(src->skin->joints_count);
