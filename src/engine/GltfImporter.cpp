@@ -1138,14 +1138,14 @@ bool GltfImporter::Load(
         assert(src->skin);
         assert(src->mesh);
 
-        std::shared_ptr<MeshInfo> prorotypeMesh;
+        std::shared_ptr<MeshInfo> prototypeMesh;
         auto found = meshMap.find(src->mesh);
         if (found != meshMap.end())
         {
-            prorotypeMesh = found->second;
-            assert( prorotypeMesh->isSkinPrototype );
+            prototypeMesh = found->second;
+            assert( prototypeMesh->isSkinPrototype );
 
-            auto skinnedInstance = std::make_shared<SkinnedMeshInstance>(m_SceneTypeFactory, prorotypeMesh);
+            auto skinnedInstance = std::make_shared<SkinnedMeshInstance>(m_SceneTypeFactory, prototypeMesh);
             skinnedInstance->joints.resize(src->skin->joints_count);
 
             for (size_t joint_idx = 0; joint_idx < src->skin->joints_count; joint_idx++)
