@@ -260,18 +260,22 @@ bool DeviceManager_DX12::CreateDevice()
     {
         RefCountPtr<ID3D12Debug> pDebug;
         HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug));
-        HR_RETURN(hr)
 
-        pDebug->EnableDebugLayer();
+        if (SUCCEEDED(hr))
+            pDebug->EnableDebugLayer();
+        else
+            donut::log::warning("Cannot enable DX12 debug runtime, ID3D12Debug is not available.");
     }
 
     if (m_DeviceParams.enableGPUValidation)
     {
         RefCountPtr<ID3D12Debug3> debugController3;
         HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(&debugController3));
-        HR_RETURN(hr); 
 
-        debugController3->SetEnableGPUBasedValidation(TRUE);
+        if (SUCCEEDED(hr))
+            debugController3->SetEnableGPUBasedValidation(true);
+        else
+            donut::log::warning("Cannot enable GPU-based validation, ID3D12Debug3 is not available.");
     }
     
     int adapterIndex = m_DeviceParams.adapterIndex;
@@ -284,6 +288,7 @@ bool DeviceManager_DX12::CreateDevice()
             donut::log::error("Cannot find any DXGI adapters in the system.");
         else
             donut::log::error("The specified DXGI adapter %d does not exist.", adapterIndex);
+            
         return false;
     }
 
@@ -300,7 +305,12 @@ bool DeviceManager_DX12::CreateDevice()
         m_DxgiAdapter,
         m_DeviceParams.featureLevel,
         IID_PPV_ARGS(&m_Device12));
-    HR_RETURN(hr)
+
+    if (FAILED(hr))
+    {
+        donut::log::error("D3D12CreateDevice failed, error code = 0x%08x", hr);
+        return false;
+    }
 
     if (m_DeviceParams.enableDebugRuntime)
     {
