@@ -804,6 +804,8 @@ bool GltfImporter::Load(
 
                 if (joint_indices->component_type == cgltf_component_type_r_8u)
                 {
+                    if (!jointStride) jointStride = sizeof(uint8_t) * 4;
+
                     for (size_t v_idx = 0; v_idx < joint_indices->count; v_idx++)
                     {
                         *jointDst = dm::vector<uint16_t, 4>(jointSrc[0], jointSrc[1], jointSrc[2], jointSrc[3]);
@@ -815,6 +817,9 @@ bool GltfImporter::Load(
                 else
                 {
                     assert(joint_indices->component_type == cgltf_component_type_r_16u);
+
+                    if (!jointStride) jointStride = sizeof(uint16_t) * 4;
+
                     for (size_t v_idx = 0; v_idx < joint_indices->count; v_idx++)
                     {
                         const uint16_t* jointSrcUshort = (const uint16_t*)jointSrc;
@@ -837,6 +842,8 @@ bool GltfImporter::Load(
 
                 if (joint_weights->component_type == cgltf_component_type_r_8u)
                 {
+                    if (!weightStride) weightStride = sizeof(uint8_t) * 4;
+
                     for (size_t v_idx = 0; v_idx < joint_indices->count; v_idx++)
                     {
                         *weightDst = dm::float4(
@@ -851,6 +858,8 @@ bool GltfImporter::Load(
                 }
                 else if (joint_weights->component_type == cgltf_component_type_r_16u)
                 {
+                    if (!weightStride) weightStride = sizeof(uint16_t) * 4;
+
                     for (size_t v_idx = 0; v_idx < joint_indices->count; v_idx++)
                     {
                         const uint16_t* weightSrcUshort = (const uint16_t*)weightSrc;
@@ -867,6 +876,9 @@ bool GltfImporter::Load(
                 else
                 {
                     assert(joint_weights->component_type == cgltf_component_type_r_32f);
+
+                    if (!weightStride) weightStride = sizeof(float) * 4;
+
                     for (size_t v_idx = 0; v_idx < joint_indices->count; v_idx++)
                     {
                         *weightDst = (const float*)weightSrc;
