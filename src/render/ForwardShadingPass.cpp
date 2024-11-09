@@ -218,6 +218,8 @@ nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(Pipelin
     pipelineDesc.renderState.blendState.alphaToCoverageEnable = false;
     pipelineDesc.bindingLayouts = { m_MaterialBindings->GetLayout(), m_ViewBindingLayout, m_LightBindingLayout };
 
+    bool const framebufferUsesMSAA = framebuffer->getFramebufferInfo().sampleCount > 1;
+
     pipelineDesc.renderState.depthStencilState
         .setDepthFunc(key.bits.reverseDepth
             ? nvrhi::ComparisonFunc::GreaterOrEqual
@@ -231,12 +233,11 @@ nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(Pipelin
 
     case MaterialDomain::AlphaTested:
         pipelineDesc.PS = m_PixelShader;
-        pipelineDesc.renderState.blendState.alphaToCoverageEnable = true;
+        pipelineDesc.renderState.blendState.alphaToCoverageEnable = framebufferUsesMSAA;
         break;
 
     case MaterialDomain::AlphaBlended: {
         pipelineDesc.PS = m_PixelShader;
-        pipelineDesc.renderState.blendState.alphaToCoverageEnable = false;
         pipelineDesc.renderState.blendState.targets[0]
             .enableBlend()
             .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
@@ -252,7 +253,6 @@ nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(Pipelin
     case MaterialDomain::TransmissiveAlphaTested:
     case MaterialDomain::TransmissiveAlphaBlended: {
         pipelineDesc.PS = m_PixelShaderTransmissive;
-        pipelineDesc.renderState.blendState.alphaToCoverageEnable = false;
         pipelineDesc.renderState.blendState.targets[0]
             .enableBlend()
             .setSrcBlend(nvrhi::BlendFactor::One)

@@ -215,7 +215,16 @@ void main(
         + specularTerm
         + surfaceMaterial.emissiveColor;
 
-    o_color.a = surfaceMaterial.opacity;
+    if (g_Material.domain == MaterialDomain_AlphaTested)
+    {
+        // Fix the fuzzy edges on alpha tested geometry.
+        // See https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
+        // Improved filtering quality by multiplying fwidth by sqrt(2).
+        o_color.a = saturate((surfaceMaterial.opacity - g_Material.alphaCutoff)
+            / max(fwidth(surfaceMaterial.opacity) * 1.4142, 0.0001) + 0.5);
+    }
+    else
+        o_color.a = surfaceMaterial.opacity;
 
 #endif // TRANSMISSIVE_MATERIAL
 }
