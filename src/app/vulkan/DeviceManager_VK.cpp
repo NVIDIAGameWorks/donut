@@ -193,8 +193,8 @@ private:
     VulkanExtensionSet optionalExtensions = {
         // instance
         { 
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
             VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
-            VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         },
         // layers
         { },
@@ -203,11 +203,11 @@ private:
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
             VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
             VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-            VK_NV_MESH_SHADER_EXTENSION_NAME,
             VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
             VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
             VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME,
+            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+            VK_NV_MESH_SHADER_EXTENSION_NAME,
 #if DONUT_WITH_AFTERMATH
             VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME,
             VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME,
@@ -1050,12 +1050,6 @@ bool DeviceManager_VK::CreateInstanceInternal()
         enabledExtensions.instance.insert("VK_EXT_debug_report");
         enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
     }
-#if DONUT_WITH_AFTERMATH
-    if (m_DeviceParams.enableAftermath)
-    {
-        enabledExtensions.instance.insert("VK_EXT_debug_utils");
-    }
-#endif
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         m_dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
