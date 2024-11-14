@@ -232,6 +232,7 @@ std::shared_ptr<MaterialBindingCache> GBufferFillPass::CreateMaterialBindingCach
         { MaterialResource::EmissiveTexture, 3 },
         { MaterialResource::OcclusionTexture, 4 },
         { MaterialResource::TransmissionTexture, 5 },
+        { MaterialResource::OpacityTexture, 6 },
         { MaterialResource::Sampler, 0 },
     };
 

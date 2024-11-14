@@ -42,6 +42,7 @@ struct MaterialTextureSample
     float4 emissive;
     float4 occlusion;
     float4 transmission;
+    float opacity;
 };
 
 MaterialTextureSample DefaultMaterialTextures()
@@ -53,6 +54,7 @@ MaterialTextureSample DefaultMaterialTextures()
     values.normal = float4(0.5, 0.5, 1.0, 0.0);
     values.occlusion = 1.0;
     values.transmission = 1.0;
+    values.opacity = 1.0;
     return values;
 }
 
@@ -205,7 +207,9 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     result.occlusion = lerp(1.0, result.occlusion, material.occlusionStrength);
     
     result.opacity = material.opacity;
-    if ((material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
+    if ((material.flags & MaterialFlags_UseOpacityTexture) != 0)
+        result.opacity *= textures.opacity;
+    else if ((material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
         result.opacity *= textures.baseOrDiffuse.a;
     result.opacity = saturate(result.opacity);
 

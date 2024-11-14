@@ -310,6 +310,13 @@ bool donut::app::MaterialEditor(engine::Material* material, bool allowMaterialDo
         update |= ImGui::SliderFloat("Transmission Factor", &material->transmissionFactor, 0.f, 1.f);
     }
 
+    if (material->opacityTexture)
+    {
+        update |= ImGui::Checkbox("Use Alpha Mask Texture", &material->enableOpacityTexture);
+        ImGui::SameLine();
+        ImGui::TextColored(filenameColor, "%s", getShortTexturePath(material->opacityTexture->path).c_str());
+    }
+    
     return update;
 }
 

@@ -88,7 +88,7 @@ namespace donut::engine
     // indeed an independent extension, KHR_materials_transmission, that can interact with the
     // blending mode. But enabling physical transmission on an object is an important change
     // for renderers: for example, rasterizers need to render "opaque" transmissive objects in a
-    // separate render pass, together with alpha bleneded materials; ray tracers also need to
+    // separate render pass, together with alpha blended materials; ray tracers also need to
     // process transmissive objects in a different way from regular opaque or alpha-tested objects.
     // Specifying the transmission option in the material domain makes these requirements explicit.
 
@@ -118,6 +118,7 @@ namespace donut::engine
         std::shared_ptr<LoadedTexture> emissiveTexture;
         std::shared_ptr<LoadedTexture> occlusionTexture;
         std::shared_ptr<LoadedTexture> transmissionTexture; // see KHR_materials_transmission; undefined on specular-gloss materials
+        std::shared_ptr<LoadedTexture> opacityTexture; // for renderers that store opacity or alpha mask separately, overrides baseOrDiffuse.a
         nvrhi::BufferHandle materialConstants;
         dm::float3 baseOrDiffuseColor = 1.f; // metal-rough: base color, spec-gloss: diffuse color (if no texture present)
         dm::float3 specularColor = 0.f; // spec-gloss: specular color
@@ -142,6 +143,7 @@ namespace donut::engine
         bool enableEmissiveTexture = true;
         bool enableOcclusionTexture = true;
         bool enableTransmissionTexture = true;
+        bool enableOpacityTexture = true;
 
         bool doubleSided = false;
         

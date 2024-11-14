@@ -59,6 +59,7 @@ MaterialBindingCache::MaterialBindingCache(
         case MaterialResource::EmissiveTexture:
         case MaterialResource::OcclusionTexture:
         case MaterialResource::TransmissionTexture:
+        case MaterialResource::OpacityTexture:
             layoutItem.type = nvrhi::ResourceType::Texture_SRV;
             break;
         case MaterialResource::Sampler:
@@ -151,6 +152,10 @@ nvrhi::BindingSetHandle donut::engine::MaterialBindingCache::CreateMaterialBindi
 
         case MaterialResource::TransmissionTexture:
             setItem = GetTextureBindingSetItem(item.slot, material->transmissionTexture);
+            break;
+
+        case MaterialResource::OpacityTexture:
+            setItem = GetTextureBindingSetItem(item.slot, material->opacityTexture);
             break;
 
         default:

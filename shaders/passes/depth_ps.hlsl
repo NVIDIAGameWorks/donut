@@ -27,6 +27,7 @@
 #include <donut/shaders/vulkan.hlsli>
 
 Texture2D t_BaseOrDiffuse : register(t0 VK_DESCRIPTOR_SET(1));
+Texture2D t_Opacity : register(t1 VK_DESCRIPTOR_SET(1));
 SamplerState s_MaterialSampler : register(s0 VK_DESCRIPTOR_SET(1));
 
 cbuffer c_Material : register(b1 VK_DESCRIPTOR_SET(1))
@@ -40,7 +41,10 @@ void main(
 )
 {
     MaterialTextureSample textures = DefaultMaterialTextures();
-    textures.baseOrDiffuse = t_BaseOrDiffuse.Sample(s_MaterialSampler, i_texCoord);
+    if ((g_Material.flags & MaterialFlags_UseBaseOrDiffuseTexture) != 0)
+        textures.baseOrDiffuse = t_BaseOrDiffuse.Sample(s_MaterialSampler, i_texCoord);
+    if ((g_Material.flags & MaterialFlags_UseOpacityTexture) != 0)
+        textures.opacity = t_Opacity.Sample(s_MaterialSampler, i_texCoord).r;
 
     MaterialSample materialSample = EvaluateSceneMaterial(/* normal = */ float3(1, 0, 0),
         /* tangent = */ float4(0, 1, 0, 0), g_Material, textures);

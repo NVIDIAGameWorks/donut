@@ -53,6 +53,10 @@
 #define MATERIAL_TRANSMISSION_SLOT t5
 #endif
 
+#ifndef MATERIAL_OPACITY_SLOT 
+#define MATERIAL_OPACITY_SLOT t6
+#endif
+
 #ifndef MATERIAL_SAMPLER_SLOT 
 #define MATERIAL_SAMPLER_SLOT s0
 #endif
@@ -68,6 +72,7 @@ Texture2D t_Normal : register(MATERIAL_NORMALS_SLOT);
 Texture2D t_Emissive : register(MATERIAL_EMISSIVE_SLOT);
 Texture2D t_Occlusion : register(MATERIAL_OCCLUSION_SLOT);
 Texture2D t_Transmission : register(MATERIAL_TRANSMISSION_SLOT);
+Texture2D t_Opacity : register(MATERIAL_OPACITY_SLOT);
 
 SamplerState s_MaterialSampler : register(MATERIAL_SAMPLER_SLOT);
 
@@ -103,6 +108,11 @@ MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord)
     if ((g_Material.flags & MaterialFlags_UseTransmissionTexture) != 0)
     {
         values.transmission = t_Transmission.Sample(s_MaterialSampler, texCoord);
+    }
+
+    if ((g_Material.flags & MaterialFlags_UseOpacityTexture) != 0)
+    {
+        values.opacity = t_Opacity.Sample(s_MaterialSampler, texCoord).r;
     }
 
     return values;
@@ -142,6 +152,11 @@ MaterialTextureSample SampleMaterialTexturesLevel(float2 texCoord, float lod)
         values.transmission = t_Transmission.SampleLevel(s_MaterialSampler, texCoord, lod);
     }
 
+    if ((g_Material.flags & MaterialFlags_UseOpacityTexture) != 0)
+    {
+        values.opacity = t_Opacity.SampleLevel(s_MaterialSampler, texCoord, lod).r;
+    }
+
     return values;
 }
 
@@ -177,6 +192,11 @@ MaterialTextureSample SampleMaterialTexturesGrad(float2 texCoord, float2 ddx, fl
     if ((g_Material.flags & MaterialFlags_UseTransmissionTexture) != 0)
     {
         values.transmission = t_Transmission.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy);
+    }
+
+    if ((g_Material.flags & MaterialFlags_UseOpacityTexture) != 0)
+    {
+        values.opacity = t_Opacity.SampleGrad(s_MaterialSampler, texCoord, ddx, ddy).r;
     }
 
     return values;

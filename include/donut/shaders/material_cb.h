@@ -39,6 +39,7 @@ static const int MaterialFlags_UseNormalTexture                 = 0x00000020;
 static const int MaterialFlags_UseOcclusionTexture              = 0x00000040;
 static const int MaterialFlags_UseTransmissionTexture           = 0x00000080;
 static const int MaterialFlags_MetalnessInRedChannel            = 0x00000100;
+static const int MaterialFlags_UseOpacityTexture                = 0x00000200;
 
 // NOTE: adjust LoadMaterialConstants(...) in bindless.h when changing this structure
 
@@ -69,9 +70,9 @@ struct MaterialConstants
     int     occlusionTextureIndex;
 
     int     transmissionTextureIndex;
+    int     opacityTextureIndex;
     int     padding1;
     int     padding2;
-    int     padding3;
 };
 
 #endif // MATERIAL_CB_H

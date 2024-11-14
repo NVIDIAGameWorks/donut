@@ -123,6 +123,7 @@ std::shared_ptr<MaterialBindingCache> DepthPass::CreateMaterialBindingCache(Comm
 {
     std::vector<MaterialResourceBinding> materialBindings = {
         { MaterialResource::DiffuseTexture, 0 },
+        { MaterialResource::OpacityTexture, 1 },
         { MaterialResource::Sampler, 0 },
         { MaterialResource::ConstantBuffer, 1 }
     };
@@ -189,7 +190,15 @@ bool DepthPass::SetupMaterial(GeometryPassContext& abstractContext, const engine
     PipelineKey key = context.keyTemplate;
     key.bits.cullMode = cullMode;
 
-    if (material->domain == MaterialDomain::AlphaTested && material->baseOrDiffuseTexture && material->baseOrDiffuseTexture->texture)
+    bool const hasBaseOrDiffuseTexture = material->baseOrDiffuseTexture
+        && material->baseOrDiffuseTexture->texture
+        && material->enableBaseOrDiffuseTexture;
+
+    bool const hasOpacityTexture = material->opacityTexture
+        && material->opacityTexture->texture
+        && material->enableOpacityTexture;
+        
+    if (material->domain == MaterialDomain::AlphaTested && (hasBaseOrDiffuseTexture || hasOpacityTexture))
     {
         nvrhi::IBindingSet* materialBindingSet = m_MaterialBindings->GetMaterialBindingSet(material);
 
