@@ -747,6 +747,9 @@ bool DeviceManager_VK::createDevice()
     bool rayQuerySupported = false;
     bool meshletsSupported = false;
     bool vrsSupported = false;
+    bool interlockSupported = false;
+    bool barycentricSupported = false;
+    bool storage16BitSupported = false;
     bool synchronization2Supported = false;
     bool maintenance4Supported = false;
     bool aftermathSupported = false;
@@ -766,6 +769,12 @@ bool DeviceManager_VK::createDevice()
             meshletsSupported = true;
         else if (ext == VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME)
             vrsSupported = true;
+        else if (ext == VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)
+            interlockSupported = true;
+        else if (ext == VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)
+            barycentricSupported = true;
+        else if (ext == VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
+            storage16BitSupported = true;
         else if (ext == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
             synchronization2Supported = true;
         else if (ext == VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
@@ -829,6 +838,12 @@ bool DeviceManager_VK::createDevice()
     auto meshletFeatures = vk::PhysicalDeviceMeshShaderFeaturesNV()
         .setTaskShader(true)
         .setMeshShader(true);
+    auto interlockFeatures = vk::PhysicalDeviceFragmentShaderInterlockFeaturesEXT()
+        .setFragmentShaderPixelInterlock(true);
+    auto barycentricFeatures = vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR()
+        .setFragmentShaderBarycentric(true);
+    auto storage16BitFeatures = vk::PhysicalDevice16BitStorageFeatures()
+        .setStorageBuffer16BitAccess(true);
     auto vrsFeatures = vk::PhysicalDeviceFragmentShadingRateFeaturesKHR()
         .setPipelineFragmentShadingRate(true)
         .setPrimitiveFragmentShadingRate(true)
@@ -847,6 +862,9 @@ bool DeviceManager_VK::createDevice()
     APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
     APPEND_EXTENSION(meshletsSupported, meshletFeatures)
     APPEND_EXTENSION(vrsSupported, vrsFeatures)
+    APPEND_EXTENSION(interlockSupported, interlockFeatures)
+    APPEND_EXTENSION(barycentricSupported, barycentricFeatures)
+    APPEND_EXTENSION(storage16BitSupported, storage16BitFeatures)
     APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
     APPEND_EXTENSION(physicalDeviceProperties.apiVersion < VK_API_VERSION_1_3 && maintenance4Supported, maintenance4Features);
 #if DONUT_WITH_AFTERMATH
@@ -862,6 +880,9 @@ bool DeviceManager_VK::createDevice()
         .setTextureCompressionBC(true)
         .setGeometryShader(true)
         .setImageCubeArray(true)
+        .setShaderInt16(true)
+        .setFillModeNonSolid(true)
+        .setFragmentStoresAndAtomics(true)
         .setDualSrcBlend(true);
 
     // Add a Vulkan 1.1 structure with default settings to make it easier for apps to modify them
