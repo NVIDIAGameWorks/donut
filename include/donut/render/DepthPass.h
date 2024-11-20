@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -60,8 +60,12 @@ namespace donut::render
         class Context : public GeometryPassContext
         {
         public:
+            nvrhi::BindingSetHandle inputBindingSet;
             PipelineKey keyTemplate;
 
+            uint32_t positionOffset = 0;
+            uint32_t texCoordOffset = 0;
+            
             Context()
             {
                 keyTemplate.value = 0;
@@ -75,6 +79,11 @@ namespace donut::render
             float depthBiasClamp = 0.f;
             float slopeScaledDepthBias = 0.f;
             bool trackLiveness = true;
+
+            // Switches between loading vertex data through the Input Assembler (true) or buffer SRVs (false).
+            // Using Buffer SRVs is often faster.
+            bool useInputAssembler = false;
+
             uint32_t numConstantBufferVersions = 16;
         };
 
@@ -83,6 +92,7 @@ namespace donut::render
         nvrhi::InputLayoutHandle m_InputLayout;
         nvrhi::ShaderHandle m_VertexShader;
         nvrhi::ShaderHandle m_PixelShader;
+        nvrhi::BindingLayoutHandle m_InputBindingLayout;
         nvrhi::BindingLayoutHandle m_ViewBindingLayout;
         nvrhi::BufferHandle m_DepthCB;
         nvrhi::BindingSetHandle m_ViewBindingSet;
@@ -92,17 +102,25 @@ namespace donut::render
         int m_DepthBias = 0;
         float m_DepthBiasClamp = 0.f;
         float m_SlopeScaledDepthBias = 0.f;
+        bool m_IsDX11 = false;
+        bool m_UseInputAssembler = false;
         bool m_TrackLiveness = true;
 
+        std::unordered_map<const engine::BufferGroup*, nvrhi::BindingSetHandle> m_InputBindingSets;
+        
         std::shared_ptr<engine::CommonRenderPasses> m_CommonPasses;
         std::shared_ptr<engine::MaterialBindingCache> m_MaterialBindings;
 
         virtual nvrhi::ShaderHandle CreateVertexShader(engine::ShaderFactory& shaderFactory, const CreateParameters& params);
         virtual nvrhi::ShaderHandle CreatePixelShader(engine::ShaderFactory& shaderFactory, const CreateParameters& params);
         virtual nvrhi::InputLayoutHandle CreateInputLayout(nvrhi::IShader* vertexShader, const CreateParameters& params);
+        virtual nvrhi::BindingLayoutHandle CreateInputBindingLayout();
+        virtual nvrhi::BindingSetHandle CreateInputBindingSet(const engine::BufferGroup* bufferGroup);
         virtual void CreateViewBindings(nvrhi::BindingLayoutHandle& layout, nvrhi::BindingSetHandle& set, const CreateParameters& params);
         virtual std::shared_ptr<engine::MaterialBindingCache> CreateMaterialBindingCache(engine::CommonRenderPasses& commonPasses);
         virtual nvrhi::GraphicsPipelineHandle CreateGraphicsPipeline(PipelineKey key, nvrhi::IFramebuffer* framebuffer);
+        nvrhi::BindingSetHandle GetOrCreateInputBindingSet(const engine::BufferGroup* bufferGroup);
+
 
     public:
         DepthPass(
@@ -113,7 +131,7 @@ namespace donut::render
             engine::ShaderFactory& shaderFactory,
             const CreateParameters& params);
 
-        void ResetBindingCache() const;
+        void ResetBindingCache();
         
         // IGeometryPass implementation
 
@@ -121,7 +139,7 @@ namespace donut::render
         void SetupView(GeometryPassContext& context, nvrhi::ICommandList* commandList, const engine::IView* view, const engine::IView* viewPrev) override;
         bool SetupMaterial(GeometryPassContext& context, const engine::Material* material, nvrhi::RasterCullMode cullMode, nvrhi::GraphicsState& state) override;
         void SetupInputBuffers(GeometryPassContext& context, const engine::BufferGroup* buffers, nvrhi::GraphicsState& state) override;
-        void SetPushConstants(GeometryPassContext& context, nvrhi::ICommandList* commandList, nvrhi::GraphicsState& state, nvrhi::DrawArguments& args) override { }
+        void SetPushConstants(GeometryPassContext& context, nvrhi::ICommandList* commandList, nvrhi::GraphicsState& state, nvrhi::DrawArguments& args) override;
     };
 
 }

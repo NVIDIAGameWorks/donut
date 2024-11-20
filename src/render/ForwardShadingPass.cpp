@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -36,17 +36,20 @@
 #if DONUT_WITH_DX11
 #include "compiled_shaders/passes/cubemap_gs.dxbc.h"
 #include "compiled_shaders/passes/forward_ps.dxbc.h"
-#include "compiled_shaders/passes/forward_vs.dxbc.h"
+#include "compiled_shaders/passes/forward_vs_input_assembler.dxbc.h"
+#include "compiled_shaders/passes/forward_vs_buffer_loads.dxbc.h"
 #endif
 #if DONUT_WITH_DX12
 #include "compiled_shaders/passes/cubemap_gs.dxil.h"
 #include "compiled_shaders/passes/forward_ps.dxil.h"
-#include "compiled_shaders/passes/forward_vs.dxil.h"
+#include "compiled_shaders/passes/forward_vs_input_assembler.dxil.h"
+#include "compiled_shaders/passes/forward_vs_buffer_loads.dxil.h"
 #endif
 #if DONUT_WITH_VULKAN
 #include "compiled_shaders/passes/cubemap_gs.spirv.h"
 #include "compiled_shaders/passes/forward_ps.spirv.h"
-#include "compiled_shaders/passes/forward_vs.spirv.h"
+#include "compiled_shaders/passes/forward_vs_input_assembler.spirv.h"
+#include "compiled_shaders/passes/forward_vs_buffer_loads.spirv.h"
 #endif
 #endif
 
@@ -63,10 +66,13 @@ ForwardShadingPass::ForwardShadingPass(
     : m_Device(device)
     , m_CommonPasses(std::move(commonPasses))
 {
+    m_IsDX11 = m_Device->getGraphicsAPI() == nvrhi::GraphicsAPI::D3D11;
 }
 
 void ForwardShadingPass::Init(ShaderFactory& shaderFactory, const CreateParameters& params)
 {
+    m_UseInputAssembler = params.useInputAssembler;
+
     m_SupportedViewTypes = ViewType::PLANAR;
     if (params.singlePassCubemap)
         m_SupportedViewTypes = ViewType::CUBEMAP;
@@ -92,18 +98,31 @@ void ForwardShadingPass::Init(ShaderFactory& shaderFactory, const CreateParamete
 
     m_ViewBindingLayout = CreateViewBindingLayout();
     m_ViewBindingSet = CreateViewBindingSet();
-    m_LightBindingLayout = CreateLightBindingLayout();
+    m_ShadingBindingLayout = CreateShadingBindingLayout();
+    m_InputBindingLayout = CreateInputBindingLayout();
 }
 
 void ForwardShadingPass::ResetBindingCache()
 {
     m_MaterialBindings->Clear();
-    m_LightBindingSets.clear();
+    m_ShadingBindingSets.clear();
+    m_InputBindingSets.clear();
 }
 
 nvrhi::ShaderHandle ForwardShadingPass::CreateVertexShader(ShaderFactory& shaderFactory, const CreateParameters& params)
 {
-    return shaderFactory.CreateAutoShader("donut/passes/forward_vs.hlsl", "main", DONUT_MAKE_PLATFORM_SHADER(g_forward_vs), nullptr, nvrhi::ShaderType::Vertex);
+    char const* sourceFileName = "donut/passes/forward_vs.hlsl";
+
+    if (params.useInputAssembler)
+    {
+        return shaderFactory.CreateAutoShader(sourceFileName, "input_assembler",
+            DONUT_MAKE_PLATFORM_SHADER(g_forward_vs_input_assembler), nullptr, nvrhi::ShaderType::Vertex);
+    }
+    else
+    {
+        return shaderFactory.CreateAutoShader(sourceFileName, "buffer_loads",
+            DONUT_MAKE_PLATFORM_SHADER(g_forward_vs_buffer_loads), nullptr, nvrhi::ShaderType::Vertex);
+    }
 }
 
 nvrhi::ShaderHandle ForwardShadingPass::CreateGeometryShader(ShaderFactory& shaderFactory, const CreateParameters& params)
@@ -134,77 +153,88 @@ nvrhi::ShaderHandle ForwardShadingPass::CreatePixelShader(ShaderFactory& shaderF
 
 nvrhi::InputLayoutHandle ForwardShadingPass::CreateInputLayout(nvrhi::IShader* vertexShader, const CreateParameters& params)
 {
-    const nvrhi::VertexAttributeDesc inputDescs[] =
+    if (params.useInputAssembler)
     {
-        GetVertexAttributeDesc(VertexAttribute::Position, "POS", 0),
-        GetVertexAttributeDesc(VertexAttribute::PrevPosition, "PREV_POS", 1),
-        GetVertexAttributeDesc(VertexAttribute::TexCoord1, "TEXCOORD", 2),
-        GetVertexAttributeDesc(VertexAttribute::Normal, "NORMAL", 3),
-        GetVertexAttributeDesc(VertexAttribute::Tangent, "TANGENT", 4),
-        GetVertexAttributeDesc(VertexAttribute::Transform, "TRANSFORM", 5),
-    };
+        const nvrhi::VertexAttributeDesc inputDescs[] =
+        {
+            GetVertexAttributeDesc(VertexAttribute::Position, "POS", 0),
+            GetVertexAttributeDesc(VertexAttribute::PrevPosition, "PREV_POS", 1),
+            GetVertexAttributeDesc(VertexAttribute::TexCoord1, "TEXCOORD", 2),
+            GetVertexAttributeDesc(VertexAttribute::Normal, "NORMAL", 3),
+            GetVertexAttributeDesc(VertexAttribute::Tangent, "TANGENT", 4),
+            GetVertexAttributeDesc(VertexAttribute::Transform, "TRANSFORM", 5),
+        };
 
-    return m_Device->createInputLayout(inputDescs, uint32_t(std::size(inputDescs)), vertexShader);
+        return m_Device->createInputLayout(inputDescs, uint32_t(std::size(inputDescs)), vertexShader);
+    }
+    
+    return nullptr;
 }
 
 nvrhi::BindingLayoutHandle ForwardShadingPass::CreateViewBindingLayout()
 {
-    nvrhi::BindingLayoutDesc viewLayoutDesc;
-    viewLayoutDesc.visibility = nvrhi::ShaderType::All;
-    viewLayoutDesc.bindings = {
-        nvrhi::BindingLayoutItem::VolatileConstantBuffer(1),
-        nvrhi::BindingLayoutItem::VolatileConstantBuffer(2),
-        nvrhi::BindingLayoutItem::Sampler(1)
-    };
+    auto bindingLayoutDesc = nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::Vertex | nvrhi::ShaderType::Pixel)
+        .setRegisterSpace(m_IsDX11 ? 0 : FORWARD_SPACE_VIEW)
+        .setRegisterSpaceIsDescriptorSet(!m_IsDX11)
+        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(FORWARD_BINDING_VIEW_CONSTANTS));
 
-    return m_Device->createBindingLayout(viewLayoutDesc);
+    return m_Device->createBindingLayout(bindingLayoutDesc);
 }
 
 
 nvrhi::BindingSetHandle ForwardShadingPass::CreateViewBindingSet()
 {
-    nvrhi::BindingSetDesc bindingSetDesc;
-    bindingSetDesc.bindings = {
-        nvrhi::BindingSetItem::ConstantBuffer(1, m_ForwardViewCB),
-        nvrhi::BindingSetItem::ConstantBuffer(2, m_ForwardLightCB),
-        nvrhi::BindingSetItem::Sampler(1, m_ShadowSampler)
-    };
-    bindingSetDesc.trackLiveness = m_TrackLiveness;
+    auto bindingSetDesc = nvrhi::BindingSetDesc()
+        .setTrackLiveness(m_TrackLiveness)
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(FORWARD_BINDING_VIEW_CONSTANTS, m_ForwardViewCB));
 
     return m_Device->createBindingSet(bindingSetDesc, m_ViewBindingLayout);
 }
 
-nvrhi::BindingLayoutHandle ForwardShadingPass::CreateLightBindingLayout()
+nvrhi::BindingLayoutHandle ForwardShadingPass::CreateShadingBindingLayout()
 {
-    nvrhi::BindingLayoutDesc lightProbeBindingDesc;
-    lightProbeBindingDesc.visibility = nvrhi::ShaderType::Pixel;
-    lightProbeBindingDesc.bindings = {
-        nvrhi::BindingLayoutItem::Texture_SRV(10),
-        nvrhi::BindingLayoutItem::Texture_SRV(11),
-        nvrhi::BindingLayoutItem::Texture_SRV(12),
-        nvrhi::BindingLayoutItem::Texture_SRV(13),
-        nvrhi::BindingLayoutItem::Sampler(2),
-        nvrhi::BindingLayoutItem::Sampler(3)
-    };
+    auto bindingLayoutDesc = nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::Pixel)
+        .setRegisterSpace(m_IsDX11 ? 0 : FORWARD_SPACE_SHADING)
+        .setRegisterSpaceIsDescriptorSet(!m_IsDX11)
+        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(FORWARD_BINDING_LIGHT_CONSTANTS))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(FORWARD_BINDING_SHADOW_MAP_TEXTURE))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(FORWARD_BINDING_DIFFUSE_LIGHT_PROBE_TEXTURE))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(FORWARD_BINDING_SPECULAR_LIGHT_PROBE_TEXTURE))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(FORWARD_BINDING_ENVIRONMENT_BRDF_TEXTURE))
+        .addItem(nvrhi::BindingLayoutItem::Sampler(FORWARD_BINDING_MATERIAL_SAMPLER))
+        .addItem(nvrhi::BindingLayoutItem::Sampler(FORWARD_BINDING_SHADOW_MAP_SAMPLER))
+        .addItem(nvrhi::BindingLayoutItem::Sampler(FORWARD_BINDING_LIGHT_PROBE_SAMPLER))
+        .addItem(nvrhi::BindingLayoutItem::Sampler(FORWARD_BINDING_ENVIRONMENT_BRDF_SAMPLER));
 
-    return m_Device->createBindingLayout(lightProbeBindingDesc);
+    return m_Device->createBindingLayout(bindingLayoutDesc);
 }
 
-nvrhi::BindingSetHandle ForwardShadingPass::CreateLightBindingSet(nvrhi::ITexture* shadowMapTexture, nvrhi::ITexture* diffuse, nvrhi::ITexture* specular, nvrhi::ITexture* environmentBrdf)
+nvrhi::BindingSetHandle ForwardShadingPass::CreateShadingBindingSet(nvrhi::ITexture* shadowMapTexture,
+    nvrhi::ITexture* diffuse, nvrhi::ITexture* specular, nvrhi::ITexture* environmentBrdf)
 {
-    nvrhi::BindingSetDesc bindingSetDesc;
+    auto bindingSetDesc = nvrhi::BindingSetDesc()
+        .setTrackLiveness(m_TrackLiveness)
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(FORWARD_BINDING_LIGHT_CONSTANTS, m_ForwardLightCB))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(FORWARD_BINDING_SHADOW_MAP_TEXTURE,
+            shadowMapTexture ? shadowMapTexture : m_CommonPasses->m_BlackTexture2DArray.Get()))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(FORWARD_BINDING_DIFFUSE_LIGHT_PROBE_TEXTURE,
+            diffuse ? diffuse : m_CommonPasses->m_BlackCubeMapArray.Get()))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(FORWARD_BINDING_SPECULAR_LIGHT_PROBE_TEXTURE,
+            specular ? specular : m_CommonPasses->m_BlackCubeMapArray.Get()))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(FORWARD_BINDING_ENVIRONMENT_BRDF_TEXTURE,
+            environmentBrdf ? environmentBrdf : m_CommonPasses->m_BlackTexture.Get()))
+        .addItem(nvrhi::BindingSetItem::Sampler(FORWARD_BINDING_MATERIAL_SAMPLER,
+            m_CommonPasses->m_AnisotropicWrapSampler))
+        .addItem(nvrhi::BindingSetItem::Sampler(FORWARD_BINDING_SHADOW_MAP_SAMPLER,
+            m_ShadowSampler))
+        .addItem(nvrhi::BindingSetItem::Sampler(FORWARD_BINDING_LIGHT_PROBE_SAMPLER,
+            m_CommonPasses->m_LinearWrapSampler))
+        .addItem(nvrhi::BindingSetItem::Sampler(FORWARD_BINDING_ENVIRONMENT_BRDF_SAMPLER,
+            m_CommonPasses->m_LinearClampSampler));
 
-    bindingSetDesc.bindings = {
-        nvrhi::BindingSetItem::Texture_SRV(10, shadowMapTexture ? shadowMapTexture : m_CommonPasses->m_BlackTexture2DArray.Get()),
-        nvrhi::BindingSetItem::Texture_SRV(11, diffuse ? diffuse : m_CommonPasses->m_BlackCubeMapArray.Get()),
-        nvrhi::BindingSetItem::Texture_SRV(12, specular ? specular : m_CommonPasses->m_BlackCubeMapArray.Get()),
-        nvrhi::BindingSetItem::Texture_SRV(13, environmentBrdf ? environmentBrdf : m_CommonPasses->m_BlackTexture.Get()),
-        nvrhi::BindingSetItem::Sampler(2, m_CommonPasses->m_LinearWrapSampler),
-        nvrhi::BindingSetItem::Sampler(3, m_CommonPasses->m_LinearClampSampler)
-    };
-    bindingSetDesc.trackLiveness = m_TrackLiveness;
-
-    return m_Device->createBindingSet(bindingSetDesc, m_LightBindingLayout);
+    return m_Device->createBindingSet(bindingSetDesc, m_ShadingBindingLayout);
 }
 
 nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(PipelineKey key, nvrhi::IFramebuffer* framebuffer)
@@ -216,7 +246,9 @@ nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(Pipelin
     pipelineDesc.renderState.rasterState.frontCounterClockwise = key.bits.frontCounterClockwise;
     pipelineDesc.renderState.rasterState.setCullMode(key.bits.cullMode);
     pipelineDesc.renderState.blendState.alphaToCoverageEnable = false;
-    pipelineDesc.bindingLayouts = { m_MaterialBindings->GetLayout(), m_ViewBindingLayout, m_LightBindingLayout };
+    pipelineDesc.bindingLayouts = { m_MaterialBindings->GetLayout(), m_ViewBindingLayout, m_ShadingBindingLayout };
+    if (!m_UseInputAssembler)
+        pipelineDesc.bindingLayouts.push_back(m_InputBindingLayout);
 
     bool const framebufferUsesMSAA = framebuffer->getFramebufferInfo().sampleCount > 1;
 
@@ -273,21 +305,21 @@ nvrhi::GraphicsPipelineHandle ForwardShadingPass::CreateGraphicsPipeline(Pipelin
 std::shared_ptr<MaterialBindingCache> ForwardShadingPass::CreateMaterialBindingCache(CommonRenderPasses& commonPasses)
 {
     std::vector<MaterialResourceBinding> materialBindings = {
-        { MaterialResource::ConstantBuffer, 0 },
-        { MaterialResource::DiffuseTexture, 0 },
-        { MaterialResource::SpecularTexture, 1 },
-        { MaterialResource::NormalTexture, 2 },
-        { MaterialResource::EmissiveTexture, 3 },
-        { MaterialResource::OcclusionTexture, 4 },
-        { MaterialResource::TransmissionTexture, 5 },
-        { MaterialResource::OpacityTexture, 6 },
-        { MaterialResource::Sampler, 0 },
+        { MaterialResource::ConstantBuffer,         FORWARD_BINDING_MATERIAL_CONSTANTS },
+        { MaterialResource::DiffuseTexture,         FORWARD_BINDING_MATERIAL_DIFFUSE_TEXTURE },
+        { MaterialResource::SpecularTexture,        FORWARD_BINDING_MATERIAL_SPECULAR_TEXTURE },
+        { MaterialResource::NormalTexture,          FORWARD_BINDING_MATERIAL_NORMAL_TEXTURE },
+        { MaterialResource::EmissiveTexture,        FORWARD_BINDING_MATERIAL_EMISSIVE_TEXTURE },
+        { MaterialResource::OcclusionTexture,       FORWARD_BINDING_MATERIAL_OCCLUSION_TEXTURE },
+        { MaterialResource::TransmissionTexture,    FORWARD_BINDING_MATERIAL_TRANSMISSION_TEXTURE },
+        { MaterialResource::OpacityTexture,         FORWARD_BINDING_MATERIAL_OPACITY_TEXTURE }
     };
 
     return std::make_shared<MaterialBindingCache>(
         m_Device,
         nvrhi::ShaderType::Pixel,
-        /* registerSpace = */ 0,
+        /* registerSpace = */ m_IsDX11 ? 0 : FORWARD_SPACE_MATERIAL,
+        /* registerSpaceIsDescriptorSet = */ !m_IsDX11,
         materialBindings,
         commonPasses.m_AnisotropicWrapSampler,
         commonPasses.m_GrayTexture,
@@ -358,14 +390,14 @@ void ForwardShadingPass::PrepareLights(
     {
         std::lock_guard<std::mutex> lockGuard(m_Mutex);
 
-        nvrhi::BindingSetHandle& lightBindings = m_LightBindingSets[std::make_pair(shadowMapTexture, lightProbeDiffuse)];
+        nvrhi::BindingSetHandle& shadingBindings = m_ShadingBindingSets[std::make_pair(shadowMapTexture, lightProbeDiffuse)];
 
-        if (!lightBindings)
+        if (!shadingBindings)
         {
-            lightBindings = CreateLightBindingSet(shadowMapTexture, lightProbeDiffuse, lightProbeSpecular, lightProbeEnvironmentBrdf);
+            shadingBindings = CreateShadingBindingSet(shadowMapTexture, lightProbeDiffuse, lightProbeSpecular, lightProbeEnvironmentBrdf);
         }
 
-        context.lightBindingSet = lightBindings;
+        context.shadingBindingSet = shadingBindings;
     }
 
 
@@ -469,21 +501,105 @@ bool ForwardShadingPass::SetupMaterial(GeometryPassContext& abstractContext, con
     assert(pipeline->getFramebufferInfo() == state.framebuffer->getFramebufferInfo());
 
     state.pipeline = pipeline;
-    state.bindings = { materialBindingSet, m_ViewBindingSet, context.lightBindingSet };
+    state.bindings = { materialBindingSet, m_ViewBindingSet, context.shadingBindingSet };
+    
+    if (!m_UseInputAssembler)
+        state.bindings.push_back(context.inputBindingSet);
 
     return true;
 }
 
 void ForwardShadingPass::SetupInputBuffers(GeometryPassContext& abstractContext, const BufferGroup* buffers, nvrhi::GraphicsState& state)
 {
-    state.vertexBuffers = {
-        { buffers->vertexBuffer, 0, buffers->getVertexBufferRange(VertexAttribute::Position).byteOffset },
-        { buffers->vertexBuffer, 1, buffers->getVertexBufferRange(VertexAttribute::PrevPosition).byteOffset },
-        { buffers->vertexBuffer, 2, buffers->getVertexBufferRange(VertexAttribute::TexCoord1).byteOffset },
-        { buffers->vertexBuffer, 3, buffers->getVertexBufferRange(VertexAttribute::Normal).byteOffset },
-        { buffers->vertexBuffer, 4, buffers->getVertexBufferRange(VertexAttribute::Tangent).byteOffset },
-        { buffers->instanceBuffer, 5, 0 }
-    };
-
+    auto& context = static_cast<Context&>(abstractContext);
+    
     state.indexBuffer = { buffers->indexBuffer, nvrhi::Format::R32_UINT, 0 };
+    
+    if (m_UseInputAssembler)
+    {
+        state.vertexBuffers = {
+            { buffers->vertexBuffer, 0, buffers->getVertexBufferRange(VertexAttribute::Position).byteOffset },
+            { buffers->vertexBuffer, 1, buffers->getVertexBufferRange(VertexAttribute::PrevPosition).byteOffset },
+            { buffers->vertexBuffer, 2, buffers->getVertexBufferRange(VertexAttribute::TexCoord1).byteOffset },
+            { buffers->vertexBuffer, 3, buffers->getVertexBufferRange(VertexAttribute::Normal).byteOffset },
+            { buffers->vertexBuffer, 4, buffers->getVertexBufferRange(VertexAttribute::Tangent).byteOffset },
+            { buffers->instanceBuffer, 5, 0 }
+        };
+    }
+    else
+    {
+        context.inputBindingSet = GetOrCreateInputBindingSet(buffers);
+        context.positionOffset = uint32_t(buffers->getVertexBufferRange(VertexAttribute::Position).byteOffset);
+        context.texCoordOffset = uint32_t(buffers->getVertexBufferRange(VertexAttribute::TexCoord1).byteOffset);
+        context.normalOffset = uint32_t(buffers->getVertexBufferRange(VertexAttribute::Normal).byteOffset);
+        context.tangentOffset = uint32_t(buffers->getVertexBufferRange(VertexAttribute::Tangent).byteOffset);
+    }
+}
+
+nvrhi::BindingLayoutHandle ForwardShadingPass::CreateInputBindingLayout()
+{
+    if (m_UseInputAssembler)
+        return nullptr;
+
+    auto bindingLayoutDesc = nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::Vertex)
+        .setRegisterSpace(m_IsDX11 ? 0 : FORWARD_SPACE_INPUT)
+        .setRegisterSpaceIsDescriptorSet(!m_IsDX11)
+        .addItem(m_IsDX11
+            ? nvrhi::BindingLayoutItem::RawBuffer_SRV(FORWARD_BINDING_INSTANCE_BUFFER)
+            : nvrhi::BindingLayoutItem::StructuredBuffer_SRV(FORWARD_BINDING_INSTANCE_BUFFER))
+        .addItem(nvrhi::BindingLayoutItem::RawBuffer_SRV(FORWARD_BINDING_VERTEX_BUFFER))
+        .addItem(nvrhi::BindingLayoutItem::PushConstants(FORWARD_BINDING_PUSH_CONSTANTS, sizeof(ForwardPushConstants)));
+        
+    return m_Device->createBindingLayout(bindingLayoutDesc);
+}
+
+nvrhi::BindingSetHandle ForwardShadingPass::CreateInputBindingSet(const BufferGroup* bufferGroup)
+{
+    auto bindingSetDesc = nvrhi::BindingSetDesc()
+        .addItem(m_IsDX11
+            ? nvrhi::BindingSetItem::RawBuffer_SRV(FORWARD_BINDING_INSTANCE_BUFFER, bufferGroup->instanceBuffer)
+            : nvrhi::BindingSetItem::StructuredBuffer_SRV(FORWARD_BINDING_INSTANCE_BUFFER, bufferGroup->instanceBuffer))
+        .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(FORWARD_BINDING_VERTEX_BUFFER, bufferGroup->vertexBuffer))
+        .addItem(nvrhi::BindingSetItem::PushConstants(FORWARD_BINDING_PUSH_CONSTANTS, sizeof(ForwardPushConstants)));
+
+    return m_Device->createBindingSet(bindingSetDesc, m_InputBindingLayout);
+}
+
+nvrhi::BindingSetHandle ForwardShadingPass::GetOrCreateInputBindingSet(const BufferGroup* bufferGroup)
+{
+    auto it = m_InputBindingSets.find(bufferGroup);
+    if (it == m_InputBindingSets.end())
+    {
+        auto bindingSet = CreateInputBindingSet(bufferGroup);
+        m_InputBindingSets[bufferGroup] = bindingSet;
+        return bindingSet;
+    }
+
+    return it->second;
+}
+
+void ForwardShadingPass::SetPushConstants(
+    donut::render::GeometryPassContext& abstractContext,
+    nvrhi::ICommandList* commandList,
+    nvrhi::GraphicsState& state,
+    nvrhi::DrawArguments& args)
+{
+    if (m_UseInputAssembler)
+        return;
+        
+    auto& context = static_cast<Context&>(abstractContext);
+
+    ForwardPushConstants constants;
+    constants.startInstanceLocation = args.startInstanceLocation;
+    constants.startVertexLocation = args.startVertexLocation;
+    constants.positionOffset = context.positionOffset;
+    constants.texCoordOffset = context.texCoordOffset;
+    constants.normalOffset = context.normalOffset;
+    constants.tangentOffset = context.tangentOffset;
+
+    commandList->setPushConstants(&constants, sizeof(constants));
+
+    args.startInstanceLocation = 0;
+    args.startVertexLocation = 0;
 }

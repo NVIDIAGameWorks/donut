@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -23,58 +23,67 @@
 #ifndef MATERIAL_BINDINGS_HLSLI
 #define MATERIAL_BINDINGS_HLSLI
 
+#include "binding_helpers.hlsli"
+
 // Bindings - can be overriden before including this file if necessary
 
 #ifndef MATERIAL_CB_SLOT 
-#define MATERIAL_CB_SLOT b0
+#define MATERIAL_CB_SLOT 0
 #endif
 
 #ifndef MATERIAL_DIFFUSE_SLOT 
-#define MATERIAL_DIFFUSE_SLOT t0
+#define MATERIAL_DIFFUSE_SLOT 0
 #endif
 
 #ifndef MATERIAL_SPECULAR_SLOT 
-#define MATERIAL_SPECULAR_SLOT t1
+#define MATERIAL_SPECULAR_SLOT 1
 #endif
 
 #ifndef MATERIAL_NORMALS_SLOT 
-#define MATERIAL_NORMALS_SLOT t2
+#define MATERIAL_NORMALS_SLOT 2
 #endif
 
 #ifndef MATERIAL_EMISSIVE_SLOT 
-#define MATERIAL_EMISSIVE_SLOT t3
+#define MATERIAL_EMISSIVE_SLOT 3
 #endif
 
 #ifndef MATERIAL_OCCLUSION_SLOT 
-#define MATERIAL_OCCLUSION_SLOT t4
+#define MATERIAL_OCCLUSION_SLOT 4
 #endif
 
 #ifndef MATERIAL_TRANSMISSION_SLOT 
-#define MATERIAL_TRANSMISSION_SLOT t5
+#define MATERIAL_TRANSMISSION_SLOT 5
 #endif
 
 #ifndef MATERIAL_OPACITY_SLOT 
-#define MATERIAL_OPACITY_SLOT t6
+#define MATERIAL_OPACITY_SLOT 6
 #endif
 
 #ifndef MATERIAL_SAMPLER_SLOT 
-#define MATERIAL_SAMPLER_SLOT s0
+#define MATERIAL_SAMPLER_SLOT 0
 #endif
 
-cbuffer c_Material : register(MATERIAL_CB_SLOT)
+#ifndef MATERIAL_REGISTER_SPACE
+#define MATERIAL_REGISTER_SPACE 0
+#endif
+
+#ifndef MATERIAL_SAMPLER_REGISTER_SPACE
+#define MATERIAL_SAMPLER_REGISTER_SPACE 0
+#endif
+
+cbuffer c_Material : REGISTER_CBUFFER(MATERIAL_CB_SLOT, MATERIAL_REGISTER_SPACE)
 {
     MaterialConstants g_Material;
 };
 
-Texture2D t_BaseOrDiffuse : register(MATERIAL_DIFFUSE_SLOT);
-Texture2D t_MetalRoughOrSpecular : register(MATERIAL_SPECULAR_SLOT);
-Texture2D t_Normal : register(MATERIAL_NORMALS_SLOT);
-Texture2D t_Emissive : register(MATERIAL_EMISSIVE_SLOT);
-Texture2D t_Occlusion : register(MATERIAL_OCCLUSION_SLOT);
-Texture2D t_Transmission : register(MATERIAL_TRANSMISSION_SLOT);
-Texture2D t_Opacity : register(MATERIAL_OPACITY_SLOT);
-
-SamplerState s_MaterialSampler : register(MATERIAL_SAMPLER_SLOT);
+Texture2D t_BaseOrDiffuse        : REGISTER_SRV(MATERIAL_DIFFUSE_SLOT,       MATERIAL_REGISTER_SPACE);
+Texture2D t_MetalRoughOrSpecular : REGISTER_SRV(MATERIAL_SPECULAR_SLOT,      MATERIAL_REGISTER_SPACE);
+Texture2D t_Normal               : REGISTER_SRV(MATERIAL_NORMALS_SLOT,       MATERIAL_REGISTER_SPACE);
+Texture2D t_Emissive             : REGISTER_SRV(MATERIAL_EMISSIVE_SLOT,      MATERIAL_REGISTER_SPACE);
+Texture2D t_Occlusion            : REGISTER_SRV(MATERIAL_OCCLUSION_SLOT,     MATERIAL_REGISTER_SPACE);
+Texture2D t_Transmission         : REGISTER_SRV(MATERIAL_TRANSMISSION_SLOT,  MATERIAL_REGISTER_SPACE);
+Texture2D t_Opacity              : REGISTER_SRV(MATERIAL_OPACITY_SLOT,       MATERIAL_REGISTER_SPACE);
+SamplerState s_MaterialSampler   : REGISTER_SAMPLER(MATERIAL_SAMPLER_SLOT,   MATERIAL_SAMPLER_REGISTER_SPACE);
 
 MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord)
 {

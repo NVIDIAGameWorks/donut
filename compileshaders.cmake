@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014-2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -154,6 +154,7 @@ function(donut_compile_shaders)
            ${output_format_arg}
            ${include_dirs}
            ${ignore_includes}
+           -D TARGET_D3D12
            --compiler "${DXC_PATH}"
            --shaderModel 6_5
            ${use_api_arg})
@@ -185,6 +186,7 @@ function(donut_compile_shaders)
            ${output_format_arg}
            ${include_dirs}
            ${ignore_includes}
+           -D TARGET_D3D12
            --compiler "${SLANGC_PATH}"
            --slang
            --shaderModel 6_5)
@@ -216,6 +218,7 @@ function(donut_compile_shaders)
            ${output_format_arg}
            ${include_dirs}
            ${ignore_includes}
+           -D TARGET_D3D11
            --compiler "${FXC_PATH}"
            ${use_api_arg})
 
@@ -247,6 +250,7 @@ function(donut_compile_shaders)
            ${include_dirs}
            ${ignore_includes}
            -D SPIRV
+           -D TARGET_VULKAN
            --compiler "${DXC_SPIRV_PATH}"
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
            --vulkanVersion 1.2
@@ -280,6 +284,7 @@ function(donut_compile_shaders)
            ${include_dirs}
            ${ignore_includes}
            -D SPIRV
+           -D TARGET_VULKAN
            --compiler "${SLANGC_PATH}"
            --slang
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -20,20 +20,14 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#include <donut/shaders/binding_helpers.hlsli>
+
 struct Constants
 {
     float2 invDisplaySize;
 };
 
-#ifdef SPIRV
-
-[[vk::push_constant]] ConstantBuffer<Constants> g_Const;
-
-#else
-
-cbuffer g_Const : register(b0) { Constants g_Const; }
-
-#endif
+DECLARE_PUSH_CONSTANTS(Constants, g_Const, 0, 0);
 
 struct VS_INPUT
 {

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,18 +22,16 @@
 
 #pragma pack_matrix(row_major)
 
+#include <donut/shaders/depth_cb.h>
 #include <donut/shaders/material_cb.h>
 #include <donut/shaders/scene_material.hlsli>
-#include <donut/shaders/vulkan.hlsli>
+#include <donut/shaders/binding_helpers.hlsli>
 
-Texture2D t_BaseOrDiffuse : register(t0 VK_DESCRIPTOR_SET(1));
-Texture2D t_Opacity : register(t1 VK_DESCRIPTOR_SET(1));
-SamplerState s_MaterialSampler : register(s0 VK_DESCRIPTOR_SET(1));
+DECLARE_CBUFFER(MaterialConstants, g_Material, DEPTH_BINDING_MATERIAL_CONSTANTS, DEPTH_SPACE_MATERIAL);
 
-cbuffer c_Material : register(b1 VK_DESCRIPTOR_SET(1))
-{
-    MaterialConstants g_Material;
-};
+Texture2D t_BaseOrDiffuse       : REGISTER_SRV(DEPTH_BINDING_MATERIAL_DIFFUSE_TEXTURE, DEPTH_SPACE_MATERIAL);
+Texture2D t_Opacity             : REGISTER_SRV(DEPTH_BINDING_MATERIAL_OPACITY_TEXTURE, DEPTH_SPACE_MATERIAL);
+SamplerState s_MaterialSampler  : REGISTER_SAMPLER(DEPTH_BINDING_MATERIAL_SAMPLER, DEPTH_SPACE_VIEW);
 
 void main(
     in float4 i_position : SV_Position,

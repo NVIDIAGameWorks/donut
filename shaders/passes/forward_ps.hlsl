@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -23,31 +23,41 @@
 #pragma pack_matrix(row_major)
 
 #include <donut/shaders/forward_cb.h>
+
+// Declare the constants that drive material bindings in 'material_bindings.hlsli'
+// to match the bindings explicitly declared in 'forward_cb.h'.
+
+#define MATERIAL_REGISTER_SPACE     FORWARD_SPACE_MATERIAL
+#define MATERIAL_CB_SLOT            FORWARD_BINDING_MATERIAL_CONSTANTS
+#define MATERIAL_DIFFUSE_SLOT       FORWARD_BINDING_MATERIAL_DIFFUSE_TEXTURE
+#define MATERIAL_SPECULAR_SLOT      FORWARD_BINDING_MATERIAL_SPECULAR_TEXTURE
+#define MATERIAL_NORMALS_SLOT       FORWARD_BINDING_MATERIAL_NORMAL_TEXTURE
+#define MATERIAL_EMISSIVE_SLOT      FORWARD_BINDING_MATERIAL_EMISSIVE_TEXTURE
+#define MATERIAL_OCCLUSION_SLOT     FORWARD_BINDING_MATERIAL_OCCLUSION_TEXTURE
+#define MATERIAL_TRANSMISSION_SLOT  FORWARD_BINDING_MATERIAL_TRANSMISSION_TEXTURE
+#define MATERIAL_OPACITY_SLOT       FORWARD_BINDING_MATERIAL_OPACITY_TEXTURE
+
+#define MATERIAL_SAMPLER_REGISTER_SPACE FORWARD_SPACE_SHADING
+#define MATERIAL_SAMPLER_SLOT           FORWARD_BINDING_MATERIAL_SAMPLER
+
 #include <donut/shaders/scene_material.hlsli>
 #include <donut/shaders/material_bindings.hlsli>
 #include <donut/shaders/forward_vertex.hlsli>
 #include <donut/shaders/lighting.hlsli>
 #include <donut/shaders/shadows.hlsli>
-#include <donut/shaders/vulkan.hlsli>
+#include <donut/shaders/binding_helpers.hlsli>
 
-cbuffer c_ForwardView : register(b1 VK_DESCRIPTOR_SET(1))
-{
-    ForwardShadingViewConstants g_ForwardView;
-};
+DECLARE_CBUFFER(ForwardShadingViewConstants, g_ForwardView, FORWARD_BINDING_VIEW_CONSTANTS,         FORWARD_SPACE_VIEW);
+DECLARE_CBUFFER(ForwardShadingLightConstants, g_ForwardLight, FORWARD_BINDING_LIGHT_CONSTANTS,      FORWARD_SPACE_SHADING);
 
-cbuffer c_ForwardLight : register(b2 VK_DESCRIPTOR_SET(1))
-{
-    ForwardShadingLightConstants g_ForwardLight;
-};
+Texture2DArray t_ShadowMapArray       : REGISTER_SRV(FORWARD_BINDING_SHADOW_MAP_TEXTURE,            FORWARD_SPACE_SHADING);
+TextureCubeArray t_DiffuseLightProbe  : REGISTER_SRV(FORWARD_BINDING_DIFFUSE_LIGHT_PROBE_TEXTURE,   FORWARD_SPACE_SHADING);
+TextureCubeArray t_SpecularLightProbe : REGISTER_SRV(FORWARD_BINDING_SPECULAR_LIGHT_PROBE_TEXTURE,  FORWARD_SPACE_SHADING);
+Texture2D t_EnvironmentBrdf           : REGISTER_SRV(FORWARD_BINDING_ENVIRONMENT_BRDF_TEXTURE,      FORWARD_SPACE_SHADING);
 
-Texture2DArray t_ShadowMapArray : register(t10 VK_DESCRIPTOR_SET(2));
-TextureCubeArray t_DiffuseLightProbe : register(t11 VK_DESCRIPTOR_SET(2));
-TextureCubeArray t_SpecularLightProbe : register(t12 VK_DESCRIPTOR_SET(2));
-Texture2D t_EnvironmentBrdf : register(t13 VK_DESCRIPTOR_SET(2));
-
-SamplerState s_ShadowSampler : register(s1 VK_DESCRIPTOR_SET(1));
-SamplerState s_LightProbeSampler : register(s2 VK_DESCRIPTOR_SET(2));
-SamplerState s_BrdfSampler : register(s3 VK_DESCRIPTOR_SET(2));
+SamplerState s_ShadowSampler          : REGISTER_SAMPLER(FORWARD_BINDING_SHADOW_MAP_SAMPLER,        FORWARD_SPACE_SHADING);
+SamplerState s_LightProbeSampler      : REGISTER_SAMPLER(FORWARD_BINDING_LIGHT_PROBE_SAMPLER,       FORWARD_SPACE_SHADING);
+SamplerState s_BrdfSampler            : REGISTER_SAMPLER(FORWARD_BINDING_ENVIRONMENT_BRDF_SAMPLER,  FORWARD_SPACE_SHADING);
 
 float3 GetIncidentVector(float4 directionOrPosition, float3 surfacePos)
 {

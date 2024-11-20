@@ -22,7 +22,7 @@
 
 #include <donut/shaders/view_cb.h>
 #include <donut/shaders/packing.hlsli>
-#include <donut/shaders/vulkan.hlsli>
+#include <donut/shaders/binding_helpers.hlsli>
 
 // simple line drawing shader for the joints render pass
 

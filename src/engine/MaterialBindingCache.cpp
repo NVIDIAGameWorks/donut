@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -29,6 +29,7 @@ MaterialBindingCache::MaterialBindingCache(
     nvrhi::IDevice* device, 
     nvrhi::ShaderType shaderType, 
     uint32_t registerSpace,
+    bool registerSpaceIsDescriptorSet,
     const std::vector<MaterialResourceBinding>& bindings,
     nvrhi::ISampler* sampler,
     nvrhi::ITexture* fallbackTexture,
@@ -42,6 +43,7 @@ MaterialBindingCache::MaterialBindingCache(
     nvrhi::BindingLayoutDesc layoutDesc;
     layoutDesc.visibility = shaderType;
     layoutDesc.registerSpace = registerSpace;
+    layoutDesc.registerSpaceIsDescriptorSet = registerSpaceIsDescriptorSet;
 
     for (const auto& item : bindings)
     {

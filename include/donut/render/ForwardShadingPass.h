@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -75,8 +75,14 @@ namespace donut::render
         class Context : public GeometryPassContext
         {
         public:
-            nvrhi::BindingSetHandle lightBindingSet;
+            nvrhi::BindingSetHandle shadingBindingSet;
+            nvrhi::BindingSetHandle inputBindingSet;
             PipelineKey keyTemplate;
+
+            uint32_t positionOffset = 0;
+            uint32_t texCoordOffset = 0;
+            uint32_t normalOffset = 0;
+            uint32_t tangentOffset = 0;
 
             Context()
             {
@@ -89,6 +95,11 @@ namespace donut::render
             std::shared_ptr<engine::MaterialBindingCache> materialBindings;
             bool singlePassCubemap = false;
             bool trackLiveness = true;
+
+            // Switches between loading vertex data through the Input Assembler (true) or buffer SRVs (false).
+            // Using Buffer SRVs is often faster.
+            bool useInputAssembler = false;
+
             uint32_t numConstantBufferVersions = 16;
         };
 
@@ -103,15 +114,19 @@ namespace donut::render
         nvrhi::SamplerHandle m_ShadowSampler;
         nvrhi::BindingLayoutHandle m_ViewBindingLayout;
         nvrhi::BindingSetHandle m_ViewBindingSet;
-        nvrhi::BindingLayoutHandle m_LightBindingLayout;
+        nvrhi::BindingLayoutHandle m_ShadingBindingLayout;
+        nvrhi::BindingLayoutHandle m_InputBindingLayout;
         engine::ViewType::Enum m_SupportedViewTypes = engine::ViewType::PLANAR;
         nvrhi::BufferHandle m_ForwardViewCB;
         nvrhi::BufferHandle m_ForwardLightCB;
         nvrhi::GraphicsPipelineHandle m_Pipelines[PipelineKey::Count];
         bool m_TrackLiveness = true;
+        bool m_IsDX11 = false;
+        bool m_UseInputAssembler = false;
         std::mutex m_Mutex;
 
-        std::unordered_map<std::pair<nvrhi::ITexture*, nvrhi::ITexture*>, nvrhi::BindingSetHandle> m_LightBindingSets;
+        std::unordered_map<std::pair<nvrhi::ITexture*, nvrhi::ITexture*>, nvrhi::BindingSetHandle> m_ShadingBindingSets;
+        std::unordered_map<const engine::BufferGroup*, nvrhi::BindingSetHandle> m_InputBindingSets;
         
         std::shared_ptr<engine::CommonRenderPasses> m_CommonPasses;
         std::shared_ptr<engine::MaterialBindingCache> m_MaterialBindings;
@@ -122,11 +137,14 @@ namespace donut::render
         virtual nvrhi::InputLayoutHandle CreateInputLayout(nvrhi::IShader* vertexShader, const CreateParameters& params);
         virtual nvrhi::BindingLayoutHandle CreateViewBindingLayout();
         virtual nvrhi::BindingSetHandle CreateViewBindingSet();
-        virtual nvrhi::BindingLayoutHandle CreateLightBindingLayout();
-        virtual nvrhi::BindingSetHandle CreateLightBindingSet(nvrhi::ITexture* shadowMapTexture, nvrhi::ITexture* diffuse, nvrhi::ITexture* specular, nvrhi::ITexture* environmentBrdf);
+        virtual nvrhi::BindingLayoutHandle CreateShadingBindingLayout();
+        virtual nvrhi::BindingSetHandle CreateShadingBindingSet(nvrhi::ITexture* shadowMapTexture, nvrhi::ITexture* diffuse, nvrhi::ITexture* specular, nvrhi::ITexture* environmentBrdf);
+        virtual nvrhi::BindingLayoutHandle CreateInputBindingLayout();
+        virtual nvrhi::BindingSetHandle CreateInputBindingSet(const engine::BufferGroup* bufferGroup);
         virtual std::shared_ptr<engine::MaterialBindingCache> CreateMaterialBindingCache(engine::CommonRenderPasses& commonPasses);
         virtual nvrhi::GraphicsPipelineHandle CreateGraphicsPipeline(PipelineKey key, nvrhi::IFramebuffer* framebuffer);
-        
+        nvrhi::BindingSetHandle GetOrCreateInputBindingSet(const engine::BufferGroup* bufferGroup);
+
     public:
         ForwardShadingPass(
             nvrhi::IDevice* device,
@@ -152,7 +170,7 @@ namespace donut::render
         void SetupView(GeometryPassContext& context, nvrhi::ICommandList* commandList, const engine::IView* view, const engine::IView* viewPrev) override;
         bool SetupMaterial(GeometryPassContext& context, const engine::Material* material, nvrhi::RasterCullMode cullMode, nvrhi::GraphicsState& state) override;
         void SetupInputBuffers(GeometryPassContext& context, const engine::BufferGroup* buffers, nvrhi::GraphicsState& state) override;
-        void SetPushConstants(GeometryPassContext& context, nvrhi::ICommandList* commandList, nvrhi::GraphicsState& state, nvrhi::DrawArguments& args) override { }
+        void SetPushConstants(GeometryPassContext& context, nvrhi::ICommandList* commandList, nvrhi::GraphicsState& state, nvrhi::DrawArguments& args) override;
     };
 
 }

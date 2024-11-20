@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2021-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -23,14 +23,10 @@
 #ifndef VULKAN_HLSLI
 #define VULKAN_HLSLI
 
-#ifdef SPIRV
-#define VK_PUSH_CONSTANT [[vk::push_constant]]
-#define VK_BINDING(reg,dset) [[vk::binding(reg,dset)]]
-#define VK_DESCRIPTOR_SET(dset) ,space##dset
-#else
-#define VK_PUSH_CONSTANT
-#define VK_BINDING(reg,dset) 
-#define VK_DESCRIPTOR_SET(dset)
+#if defined(__HLSL_VERSION) // FXC doesn't understand #warning
+#warning "vulkan.hlsli is deprecated - please update the code to use binding_helpers.hlsli"
 #endif
+
+#include "binding_helpers.hlsli"
 
 #endif // VULKAN_HLSLI

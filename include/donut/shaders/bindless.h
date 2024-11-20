@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -67,6 +67,11 @@ static const uint c_SizeOfTexcoord = 8;
 static const uint c_SizeOfNormal = 4;
 static const uint c_SizeOfJointIndices = 8;
 static const uint c_SizeOfJointWeights = 16;
+
+// Define the sizes of these structures because FXC doesn't support sizeof(x)
+static const uint c_SizeOfGeometryData = 3*16;
+static const uint c_SizeOfInstanceData = 7*16;
+static const uint c_SizeOfMaterialConstants = 7*16;
 
 GeometryData LoadGeometryData(ByteAddressBuffer buffer, uint offset)
 {

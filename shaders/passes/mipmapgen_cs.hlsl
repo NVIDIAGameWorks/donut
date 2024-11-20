@@ -64,7 +64,7 @@ cbuffer c_MipMapgen : register(b0)
     MipmmapGenConstants g_MipMapGen;
 };
 
-#ifdef SPIRV
+#ifdef TARGET_VULKAN
 // Note: use an unsized array of UAVs on Vulkan to work around validation layer errors.
 // DXC maps this to an array of descriptors in one binding, like u0.0, u0.1, ... instead of u0, u1, ... which NVRHI doesn't support.
 // Using different bindings for array elements somehow works, and that's what NVRHI's BindingSets do, so just silence the validation layer by using dynamic array indexing.

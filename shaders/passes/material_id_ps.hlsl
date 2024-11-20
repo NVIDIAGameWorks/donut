@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014-2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2014-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -20,27 +20,32 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#include <donut/shaders/gbuffer_cb.h>
+
+// Declare the constants that drive material bindings in 'material_bindings.hlsli'
+// to match the bindings explicitly declared in 'gbuffer_cb.h'.
+
+#define MATERIAL_REGISTER_SPACE     GBUFFER_SPACE_MATERIAL
+#define MATERIAL_CB_SLOT            GBUFFER_BINDING_MATERIAL_CONSTANTS
+#define MATERIAL_DIFFUSE_SLOT       GBUFFER_BINDING_MATERIAL_DIFFUSE_TEXTURE
+#define MATERIAL_SPECULAR_SLOT      GBUFFER_BINDING_MATERIAL_SPECULAR_TEXTURE
+#define MATERIAL_NORMALS_SLOT       GBUFFER_BINDING_MATERIAL_NORMAL_TEXTURE
+#define MATERIAL_EMISSIVE_SLOT      GBUFFER_BINDING_MATERIAL_EMISSIVE_TEXTURE
+#define MATERIAL_OCCLUSION_SLOT     GBUFFER_BINDING_MATERIAL_OCCLUSION_TEXTURE
+#define MATERIAL_TRANSMISSION_SLOT  GBUFFER_BINDING_MATERIAL_TRANSMISSION_TEXTURE
+#define MATERIAL_OPACITY_SLOT       GBUFFER_BINDING_MATERIAL_OPACITY_TEXTURE
+
+#define MATERIAL_SAMPLER_REGISTER_SPACE GBUFFER_SPACE_VIEW
+#define MATERIAL_SAMPLER_SLOT           GBUFFER_BINDING_MATERIAL_SAMPLER
+
 #include <donut/shaders/scene_material.hlsli>
-#include <donut/shaders/material_bindings.hlsli>
 #include <donut/shaders/forward_vertex.hlsli>
-#include <donut/shaders/vulkan.hlsli>
+#include <donut/shaders/material_bindings.hlsli>
+#include <donut/shaders/scene_material.hlsli>
+#include <donut/shaders/binding_helpers.hlsli>
 
-struct Constants {
-    uint instanceOffset;
-};
-
-#ifdef SPIRV
-
-VK_PUSH_CONSTANT ConstantBuffer<Constants> g_Const : register(b2);
-
-#else
-
-cbuffer c_Instance : register(b2)
-{
-    Constants g_Const;
-};
-
-#endif
+DECLARE_CBUFFER(GBufferFillConstants, c_GBuffer, GBUFFER_BINDING_VIEW_CONSTANTS, GBUFFER_SPACE_VIEW);
+DECLARE_PUSH_CONSTANTS(GBufferPushConstants, g_Push, GBUFFER_BINDING_PUSH_CONSTANTS, GBUFFER_SPACE_INPUT);
 
 void main(
     in float4 i_position : SV_Position,
@@ -58,6 +63,6 @@ void main(
 #endif
 
     o_output.x = uint(g_Material.materialID);
-    o_output.y = g_Const.instanceOffset + i_instance;
+    o_output.y = g_Push.startInstanceLocation + i_instance;
     o_output.zw = 0;
 }

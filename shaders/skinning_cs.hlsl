@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+* Copyright (c) 2021-2024, NVIDIA CORPORATION. All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
 #pragma pack_matrix(row_major)
 
 #include <donut/shaders/bindless.h>
-#include <donut/shaders/vulkan.hlsli>
+#include <donut/shaders/binding_helpers.hlsli>
 #include <donut/shaders/packing.hlsli>
 #include <donut/shaders/skinning_cb.h>
 
@@ -32,16 +32,7 @@ ByteAddressBuffer t_JointMatrices : register(t1);
 
 RWByteAddressBuffer u_VertexBuffer : register(u0);
 
-#ifdef SPIRV
-
-[[vk::push_constant]] ConstantBuffer<SkinningConstants> g_Const;
-
-#else
-
-cbuffer g_Const : register(b0) { SkinningConstants g_Const; }
-
-#endif
-
+DECLARE_PUSH_CONSTANTS(SkinningConstants, g_Const, 0, 0);
 
 [numthreads(256, 1, 1)]
 void main(in uint i_globalIdx : SV_DispatchThreadID)
