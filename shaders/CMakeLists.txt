@@ -38,7 +38,7 @@ endif()
 if(DONUT_WITH_STATIC_SHADERS)
 	set(output_format "HEADER")
 else()
-	set(output_foramt "BINARY")
+	set(output_format "BINARY")
 endif()
 
 # List all outputs of the shader compile target to ensure proper rebuilds when using Ninja
