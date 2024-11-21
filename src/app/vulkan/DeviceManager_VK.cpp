@@ -258,8 +258,9 @@ private:
     nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
     nvrhi::DeviceHandle m_ValidationLayer;
 
-    nvrhi::CommandListHandle m_BarrierCommandList;
+    std::vector<vk::Semaphore> m_AcquireSemaphores;
     std::vector<vk::Semaphore> m_PresentSemaphores;
+    uint32_t m_AcquireSemaphoreIndex = 0;
     uint32_t m_PresentSemaphoreIndex = 0;
 
     std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
@@ -1208,12 +1209,12 @@ bool DeviceManager_VK::CreateSwapChain()
 {
     CHECK(createSwapChain())
 
-    m_BarrierCommandList = m_NvrhiDevice->createCommandList();
-
     m_PresentSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
+    m_AcquireSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
     for (uint32_t i = 0; i < m_DeviceParams.maxFramesInFlight + 1; ++i)
     {
         m_PresentSemaphores.push_back(m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo()));
+        m_AcquireSemaphores.push_back(m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo()));
     }
 
     return true;
@@ -1233,7 +1234,14 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain()
         }
     }
 
-    m_BarrierCommandList = nullptr;
+    for (auto& semaphore : m_AcquireSemaphores)
+    {
+        if (semaphore)
+        {
+            m_VulkanDevice.destroySemaphore(semaphore);
+            semaphore = vk::Semaphore();
+        }
+    }
 
     m_NvrhiDevice = nullptr;
     m_ValidationLayer = nullptr;
@@ -1266,7 +1274,7 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain()
 
 bool DeviceManager_VK::BeginFrame()
 {
-    const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+    const auto& semaphore = m_AcquireSemaphores[m_AcquireSemaphoreIndex];
 
     vk::Result res;
 
@@ -1295,8 +1303,11 @@ bool DeviceManager_VK::BeginFrame()
             break;
     }
 
+    m_AcquireSemaphoreIndex = (m_AcquireSemaphoreIndex + 1) % m_AcquireSemaphores.size();
+
     if (res == vk::Result::eSuccess)
     {
+        // Schedule the wait. The actual wait operation will be submitted when the app executes any command list.
         m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
         return true;
     }
@@ -1310,9 +1321,9 @@ bool DeviceManager_VK::Present()
 
     m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 
-    m_BarrierCommandList->open(); // umm...
-    m_BarrierCommandList->close();
-    m_NvrhiDevice->executeCommandList(m_BarrierCommandList);
+    // NVRHI buffers the semaphores and signals them when something is submitted to a queue.
+    // Call 'executeCommandLists' with no command lists to actually signal the semaphore.
+    m_NvrhiDevice->executeCommandLists(nullptr, 0);
 
     vk::PresentInfoKHR info = vk::PresentInfoKHR()
                                 .setWaitSemaphoreCount(1)
