@@ -115,6 +115,7 @@ std::shared_ptr<IBlob> NativeFileSystem::readFile(const std::filesystem::path& n
     {
         // reading error
         assert(false);
+        free(data);
         return nullptr;
     }
 
