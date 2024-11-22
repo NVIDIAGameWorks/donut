@@ -97,36 +97,59 @@ std::optional<dm::float4> Sampler::Evaluate(float time, bool extrapolateLastValu
     if (time <= m_Keyframes[0].time)
         return std::optional(m_Keyframes[0].value);
 
-    if (m_Keyframes.size() == 1 || time >= m_Keyframes[count - 1].time)
+    if (count == 1 || time >= m_Keyframes[count - 1].time)
     {
         if (extrapolateLastValues)
             return std::optional(m_Keyframes[count - 1].value);
         else
             return std::optional<float4>();
     }
-
-    for (size_t offset = 0; offset < count; offset++)
+    
+    // Use binary search to locate the pair of keyframes (b, c) so that (b.time <= time < c.time).
+    // Assume that the keyframe vector is sorted by time.
+    // Right limit starts at (count - 2) because we're always looking at consecutive pairs of items, not single items.
+    size_t left = 0;
+    size_t right = count - 2;
+    while (left <= right)
     {
-        const float tb = m_Keyframes[offset].time;
-        const float tc = m_Keyframes[offset + 1].time;
+        size_t const middle = (left + right) / 2;
 
-        if (tb <= time && time < tc)
+        const float tb = m_Keyframes[middle].time;
+        const float tc = m_Keyframes[middle + 1].time;
+
+        if (time < tb)
+            right = middle - 1;
+        else if (time >= tc)
+            left = middle + 1;
+        else
         {
-            const Keyframe& b = m_Keyframes[offset];
-            const Keyframe& c = m_Keyframes[offset + 1];
-            const Keyframe& a = (offset > 0) ? m_Keyframes[offset - 1] : b;
-            const Keyframe& d = (offset < count - 2) ? m_Keyframes[offset + 2] : c;
-            const float dt = tc - tb;
-            const float u = (time - tb) / dt;
-
-            float4 y = Interpolate(m_Mode, a, b, c, d, u, dt);
-            
-            return std::optional(y);
+            // Found the pair containing the required time, stop.
+            left = right = middle;
+            break;
         }
     }
 
-    // shouldn't get here if the keyframes are properly ordered in time
-    return std::optional<float4>();
+    // Load 4 keyframes around the required time.
+    // The outside keyframes (a) and (d) are needed for higher-order interpolation.
+    size_t const offset = left;
+    const Keyframe& b = m_Keyframes[offset];
+    const Keyframe& c = m_Keyframes[offset + 1];
+    const Keyframe& a = (offset > 0) ? m_Keyframes[offset - 1] : b;
+    const Keyframe& d = (offset < count - 2) ? m_Keyframes[offset + 2] : c;
+    
+    // Validate that the (b, c) keyframes indeed contain the required time.
+    if (time < b.time || time >= c.time)
+    {
+        assert(!"Incorrect keyframe search result! Array not sorted?");
+        return std::nullopt;
+    }
+    
+    const float dt = c.time - b.time;
+    const float u = (time - b.time) / dt;
+
+    float4 y = Interpolate(m_Mode, a, b, c, d, u, dt);
+    
+    return std::optional(y);
 }
 
 void Sampler::AddKeyframe(const Keyframe keyframe)
