@@ -268,7 +268,11 @@ private:
 
     bool m_BufferDeviceAddressSupported = false;
 
+#if VK_HEADER_VERSION >= 301
+    vk::detail::DynamicLoader m_dynamicLoader;
+#else
     vk::DynamicLoader m_dynamicLoader;
+#endif
 
 private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(
