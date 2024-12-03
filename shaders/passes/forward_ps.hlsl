@@ -71,9 +71,9 @@ void main(
     in float4 i_position : SV_Position,
     in SceneVertex i_vtx,
     in bool i_isFrontFace : SV_IsFrontFace,
-    out float4 o_color : SV_Target0
+    VK_LOCATION_INDEX(0, 0) out float4 o_color : SV_Target0
 #if TRANSMISSIVE_MATERIAL
-    , out float4 o_backgroundBlendFactor : SV_Target1
+    , VK_LOCATION_INDEX(0, 1) out float4 o_backgroundBlendFactor : SV_Target1
 #endif
 )
 {

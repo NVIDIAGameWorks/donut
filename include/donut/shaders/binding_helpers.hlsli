@@ -29,11 +29,19 @@
 #define VK_BINDING(reg,dset) [[vk::binding(reg,dset)]]
 #define VK_DESCRIPTOR_SET(dset) ,space##dset
 
+// To use dual-source blending on Vulkan, a pixel shader must specify the same Location but different Index
+// decorations for two outputs. In HLSL, that can only be achieved with explicit attributes.
+// Use on the declarations of pixel shader outputs.
+#define VK_LOCATION(loc) [[vk::location(loc)]]
+#define VK_LOCATION_INDEX(loc,idx) [[vk::location(loc)]] [[vk::index(idx)]]
+
 #else
 
 #define VK_PUSH_CONSTANT
 #define VK_BINDING(reg,dset) 
 #define VK_DESCRIPTOR_SET(dset)
+#define VK_LOCATION(loc)
+#define VK_LOCATION_INDEX(loc,idx)
 
 #endif
 
