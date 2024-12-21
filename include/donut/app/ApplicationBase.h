@@ -55,6 +55,7 @@ namespace donut::app
     public:
         ApplicationBase(DeviceManager* deviceManager);
 
+        virtual void SetLatewarpOptions() override { }
         virtual void Render(nvrhi::IFramebuffer* framebuffer) override;
 
         virtual void RenderScene(nvrhi::IFramebuffer* framebuffer);

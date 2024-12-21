@@ -77,6 +77,8 @@ namespace donut::app
         std::array<bool, 3> mouseDown = { false };
         std::array<bool, GLFW_KEY_LAST + 1> keyDown = { false };
 
+        bool m_beginFrameCalled = false;
+
     public:
         ImGui_Renderer(DeviceManager *devManager);
         ~ImGui_Renderer();

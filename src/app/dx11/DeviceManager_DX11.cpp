@@ -52,6 +52,7 @@ freely, subject to the following restrictions:
 #include <locale>
 
 #include <donut/app/DeviceManager.h>
+#include <donut/app/DeviceManager_DX11.h>
 #include <donut/core/log.h>
 
 #include <Windows.h>
@@ -64,80 +65,6 @@ freely, subject to the following restrictions:
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;
-
-class DeviceManager_DX11 : public DeviceManager
-{
-    RefCountPtr<IDXGIFactory1> m_DxgiFactory;
-    RefCountPtr<IDXGIAdapter> m_DxgiAdapter;
-    RefCountPtr<ID3D11Device> m_Device;
-    RefCountPtr<ID3D11DeviceContext> m_ImmediateContext;
-    RefCountPtr<IDXGISwapChain> m_SwapChain;
-    DXGI_SWAP_CHAIN_DESC m_SwapChainDesc{};
-    HWND m_hWnd = nullptr;
-
-    nvrhi::DeviceHandle m_NvrhiDevice;
-    nvrhi::TextureHandle m_RhiBackBuffer;
-    RefCountPtr<ID3D11Texture2D> m_D3D11BackBuffer;
-
-    std::string m_RendererString;
-
-public:
-    [[nodiscard]] const char* GetRendererString() const override
-    {
-        return m_RendererString.c_str();
-    }
-
-    [[nodiscard]] nvrhi::IDevice* GetDevice() const override
-    {
-        return m_NvrhiDevice;
-    }
-
-    bool BeginFrame() override;
-    void ReportLiveObjects() override;
-    bool EnumerateAdapters(std::vector<AdapterInfo>& outAdapters) override;
-
-    [[nodiscard]] nvrhi::GraphicsAPI GetGraphicsAPI() const override
-    {
-        return nvrhi::GraphicsAPI::D3D11;
-    }
-protected:
-    bool CreateInstanceInternal() override;
-    bool CreateDevice() override;
-    bool CreateSwapChain() override;
-    void DestroyDeviceAndSwapChain() override;
-    void ResizeSwapChain() override;
-    void Shutdown() override;
-
-    nvrhi::ITexture* GetCurrentBackBuffer() override
-    {
-        return m_RhiBackBuffer;
-    }
-
-    nvrhi::ITexture* GetBackBuffer(uint32_t index) override
-    {
-        if (index == 0)
-            return m_RhiBackBuffer;
-
-        return nullptr;
-    }
-
-    uint32_t GetCurrentBackBufferIndex() override
-    {
-        return 0;
-    }
-
-    uint32_t GetBackBufferCount() override
-    {
-        return 1;
-    }
-
-    bool Present() override;
-
-
-private:
-    bool CreateRenderTarget();
-    void ReleaseRenderTarget();
-};
 
 static bool IsNvDeviceID(UINT id)
 {
@@ -212,17 +139,6 @@ void DeviceManager_DX11::ReportLiveObjects()
 
     if (pDebug)
         pDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
-}
-
-static std::string GetAdapterName(DXGI_ADAPTER_DESC const& aDesc)
-{
-    size_t length = wcsnlen(aDesc.Description, _countof(aDesc.Description));
-
-    std::string name;
-    name.resize(length);
-    WideCharToMultiByte(CP_ACP, 0, aDesc.Description, int(length), name.data(), int(name.size()), nullptr, nullptr);
-
-    return name;
 }
 
 bool DeviceManager_DX11::CreateInstanceInternal()

@@ -208,7 +208,9 @@ bool ImGui_Renderer::MouseButtonUpdate(int button, int action, int mods)
 
 void ImGui_Renderer::Animate(float elapsedTimeSeconds)
 {
-    if (!imgui_nvrhi) return;
+    // multiple Animate may be called before the first Render due to the m_SkipRenderOnFirstFrame extension
+    // ensure each imgui_nvrhi->beginFrame matches with exactly one imgui_nvrhi->Render
+    if (!imgui_nvrhi || m_beginFrameCalled) return;
 
     int w, h;
     float scaleX, scaleY;
@@ -227,6 +229,7 @@ void ImGui_Renderer::Animate(float elapsedTimeSeconds)
     io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 
     imgui_nvrhi->beginFrame(elapsedTimeSeconds);
+    m_beginFrameCalled = true;
 }
 
 void ImGui_Renderer::Render(nvrhi::IFramebuffer* framebuffer)
@@ -237,6 +240,7 @@ void ImGui_Renderer::Render(nvrhi::IFramebuffer* framebuffer)
 
     ImGui::Render();
     imgui_nvrhi->render(framebuffer);
+    m_beginFrameCalled = false;
 
     // reconcile mouse button states
     auto& io = ImGui::GetIO();

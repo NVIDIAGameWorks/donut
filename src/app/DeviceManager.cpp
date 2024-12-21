@@ -429,6 +429,7 @@ void DeviceManager::Animate(double elapsedTime)
     for(auto it : m_vRenderPasses)
     {
         it->Animate(float(elapsedTime));
+        it->SetLatewarpOptions();
     }
 }
 
@@ -476,9 +477,7 @@ void DeviceManager::RunMessageLoop()
 #endif
     while(!glfwWindowShouldClose(m_Window))
     {
-
-        if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
-
+        if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this, m_FrameIndex);
         glfwPollEvents();
         UpdateWindowSize();
         bool presentSuccess = AnimateRenderPresent();
@@ -510,20 +509,35 @@ bool DeviceManager::AnimateRenderPresent()
 
     if (m_windowVisible && (m_windowIsInFocus || ShouldRenderUnfocused()))
     {
-        if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
+        if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this, m_FrameIndex);
         Animate(elapsedTime);
-        if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
-        if (BeginFrame())
+        if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this, m_FrameIndex);
+
+        // normal rendering           : A0    R0 P0 A1 R1 P1
+        // m_SkipRenderOnFirstFrame on: A0 A1 R0 P0 A2 R1 P1
+        // m_SkipRenderOnFirstFrame simulates multi-threaded rendering frame indices, m_FrameIndex becomes the simulation index
+        // while the local variable below becomes the render/present index, which will be different only if m_SkipRenderOnFirstFrame is set
+        if (m_FrameIndex > 0 || !m_SkipRenderOnFirstFrame)
         {
-            if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
-            Render();
-            if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
-            if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
-            bool presentSuccess = Present();
-            if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
-            if (!presentSuccess)
+            if (BeginFrame())
             {
-                return false;
+                // first time entering this loop, m_FrameIndex is 1 for m_SkipRenderOnFirstFrame, 0 otherwise;
+                uint32_t frameIndex = m_FrameIndex;
+                if (m_SkipRenderOnFirstFrame)
+                {
+                    frameIndex--;
+                }
+
+                if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this, frameIndex);
+                Render();
+                if (m_callbacks.afterRender) m_callbacks.afterRender(*this, frameIndex);
+                if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this, frameIndex);
+                bool presentSuccess = Present();
+                if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this, frameIndex);
+                if (!presentSuccess)
+                {
+                    return false;
+                }
             }
         }
     }
@@ -611,7 +625,7 @@ void DeviceManager::WindowPosCallback(int x, int y)
 #endif    
     if (m_EnableRenderDuringWindowMovement && m_SwapChainFramebuffers.size() > 0)
     {
-        if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
+        if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this, m_FrameIndex);
         AnimateRenderPresent();
     }
 }

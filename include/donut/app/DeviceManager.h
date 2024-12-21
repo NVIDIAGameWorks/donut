@@ -224,6 +224,9 @@ namespace donut::app
         }
 
     protected:
+        // useful for apps that require 2 frames worth of simulation data before first render
+        // apps should extend the DeviceManager classes, and constructor initialized this to true to opt in to the behavior
+        bool m_SkipRenderOnFirstFrame = false;
         bool m_windowVisible = false;
         bool m_windowIsInFocus = true;
 
@@ -322,14 +325,16 @@ namespace donut::app
         virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const { }
         virtual void GetEnabledVulkanLayers(std::vector<std::string>& layers) const { }
 
+        // GetFrameIndex cannot be used inside of these callbacks, hence the additional passing of frameID
+        // Refer to AnimateRenderPresent implementation for more details
         struct PipelineCallbacks {
-            std::function<void(DeviceManager&)> beforeFrame = nullptr;
-            std::function<void(DeviceManager&)> beforeAnimate = nullptr;
-            std::function<void(DeviceManager&)> afterAnimate = nullptr;
-            std::function<void(DeviceManager&)> beforeRender = nullptr;
-            std::function<void(DeviceManager&)> afterRender = nullptr;
-            std::function<void(DeviceManager&)> beforePresent = nullptr;
-            std::function<void(DeviceManager&)> afterPresent = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeFrame = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeAnimate = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterAnimate = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeRender = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterRender = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforePresent = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterPresent = nullptr;
         } m_callbacks;
 
     private:
@@ -355,6 +360,7 @@ namespace donut::app
 
         virtual ~IRenderPass() = default;
 
+        virtual void SetLatewarpOptions() { }
         virtual bool ShouldRenderUnfocused() { return false; }
         virtual void Render(nvrhi::IFramebuffer* framebuffer) { }
         virtual void Animate(float fElapsedTimeSeconds) { }
