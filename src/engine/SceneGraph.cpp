@@ -56,6 +56,7 @@ SkinnedMeshInstance::SkinnedMeshInstance(std::shared_ptr<SceneTypeFactory> scene
     skinnedMesh->skinPrototype = m_PrototypeMesh;
     skinnedMesh->name = m_PrototypeMesh->name;
     skinnedMesh->objectSpaceBounds = m_PrototypeMesh->objectSpaceBounds;
+    skinnedMesh->indexOffset = m_PrototypeMesh->indexOffset;
     skinnedMesh->totalVertices = m_PrototypeMesh->totalVertices;
     skinnedMesh->totalIndices = m_PrototypeMesh->totalIndices;
     skinnedMesh->geometries.reserve(m_PrototypeMesh->geometries.size());
