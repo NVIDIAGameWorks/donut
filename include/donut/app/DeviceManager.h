@@ -99,6 +99,8 @@ namespace donut::app
 #if DONUT_WITH_AFTERMATH
         bool enableAftermath = false;
 #endif
+        bool logBufferLifetime = false;
+        bool enableHeapDirectlyIndexed = false; // Allows ResourceDescriptorHeap on DX12
 
         // Severity of the information log messages from the device manager, like the device name or enabled extensions.
         log::Severity infoLogSeverity = log::Severity::Info;
@@ -113,7 +115,7 @@ namespace donut::app
 
     struct DeviceCreationParameters : public InstanceParameters
     {
-        bool startMaximized = false;
+        bool startMaximized = false; // ignores backbuffer width/height to be monitor size
         bool startFullscreen = false;
         bool allowModeSwitch = true;
         int windowPosX = -1;            // -1 means use default placement
@@ -147,6 +149,8 @@ namespace donut::app
         // wishes to scale up rendering based on DPI, then it must set this to true
         // and respond to DPI scale factor changes by resizing the backbuffer explicitly
         bool enablePerMonitorDPI = false;
+
+        nvrhi::IMessageCallback *messageCallback = nullptr;
 
 #if DONUT_WITH_DX11 || DONUT_WITH_DX12
         DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;

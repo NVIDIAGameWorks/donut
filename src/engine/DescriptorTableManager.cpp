@@ -44,6 +44,19 @@ donut::engine::DescriptorHandle::~DescriptorHandle()
     }
 }
 
+donut::engine::DescriptorIndex donut::engine::DescriptorHandle::GetIndexInHeap() const
+{
+    if (m_DescriptorIndex >= 0)
+    {
+        assert(!m_Manager.expired());
+        if (std::shared_ptr<DescriptorTableManager> manager = m_Manager.lock())
+        {
+            return manager->GetDescriptorTable()->getFirstDescriptorIndexInHeap() + m_DescriptorIndex;
+        }
+    }
+    return -1;
+}
+
 donut::engine::DescriptorTableManager::DescriptorTableManager(nvrhi::IDevice* device, nvrhi::IBindingLayout* layout)
     : m_Device(device)
 {

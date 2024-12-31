@@ -328,12 +328,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     {
         glfwSetWindowPos(m_Window, params.windowPosX, params.windowPosY);
     }
-
-    if (params.startMaximized)
-    {
-        glfwMaximizeWindow(m_Window);
-    }
-
+    
     glfwSetWindowPosCallback(m_Window, WindowPosCallback_GLFW);
     glfwSetWindowCloseCallback(m_Window, WindowCloseCallback_GLFW);
     glfwSetWindowRefreshCallback(m_Window, WindowRefreshCallback_GLFW);
@@ -357,6 +352,11 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
         return false;
 
     glfwShowWindow(m_Window);
+    
+    if (m_DeviceParams.startMaximized)
+    {
+        glfwMaximizeWindow(m_Window);
+    }
 
     // reset the back buffer size state to enforce a resize event
     m_DeviceParams.backBufferWidth = 0;

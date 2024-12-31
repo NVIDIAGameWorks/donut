@@ -291,7 +291,7 @@ bool DeviceManager_DX12::CreateDevice()
     }
 
     nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.errorCB = &DefaultMessageCallback::GetInstance();
+    deviceDesc.errorCB = m_DeviceParams.messageCallback ? m_DeviceParams.messageCallback : &DefaultMessageCallback::GetInstance();
     deviceDesc.pDevice = m_Device12;
     deviceDesc.pGraphicsCommandQueue = m_GraphicsQueue;
     deviceDesc.pComputeCommandQueue = m_ComputeQueue;
@@ -299,6 +299,8 @@ bool DeviceManager_DX12::CreateDevice()
 #if DONUT_WITH_AFTERMATH
     deviceDesc.aftermathEnabled = m_DeviceParams.enableAftermath;
 #endif
+    deviceDesc.logBufferLifetime = m_DeviceParams.logBufferLifetime;
+    deviceDesc.enableHeapDirectlyIndexed = m_DeviceParams.enableHeapDirectlyIndexed;
 
     m_NvrhiDevice = nvrhi::d3d12::createDevice(deviceDesc);
 
