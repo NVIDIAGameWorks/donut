@@ -1,6 +1,6 @@
 [submodule "nvrhi"]
 	path = nvrhi
-	url = https://github.com/NVIDIAGameWorks/nvrhi.git
+	url = ../nvrhi
 [submodule "thirdparty/imgui"]
 	path = thirdparty/imgui
 	url = https://github.com/ocornut/imgui
