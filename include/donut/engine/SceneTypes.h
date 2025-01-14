@@ -131,6 +131,7 @@ namespace donut::engine
         float transmissionFactor = 0.f; // see KHR_materials_transmission; undefined on specular-gloss materials
         float normalTextureScale = 1.f;
         float occlusionStrength = 1.f;
+        dm::float2 normalTextureTransformScale = 1.f;
 
         // Toggle between two PBR models: metal-rough and specular-gloss.
         // See the comments on the other fields here.

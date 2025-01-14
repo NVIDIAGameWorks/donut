@@ -55,7 +55,7 @@ void main(
 )
 {
 #if ALPHA_TESTED
-    MaterialTextureSample textures = SampleMaterialTexturesAuto(i_vtx.texCoord);
+    MaterialTextureSample textures = SampleMaterialTexturesAuto(i_vtx.texCoord, g_Material.normalTextureTransformScale);
 
     MaterialSample surface = EvaluateSceneMaterial(i_vtx.normal, i_vtx.tangent, g_Material, textures);
     
