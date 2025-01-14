@@ -71,8 +71,7 @@ struct MaterialConstants
 
     int     transmissionTextureIndex;
     int     opacityTextureIndex;
-    int     padding1;
-    int     padding2;
+    float2  normalTextureTransformScale;
 };
 
 #endif // MATERIAL_CB_H

@@ -410,6 +410,26 @@ bool GltfImporter::Load(
         matinfo->alphaCutoff = material.alpha_cutoff;
         matinfo->doubleSided = material.double_sided;
 
+        // Texture transformation extension:
+        // Only scaling transformation for normal map texture coordinate is supported in importer.
+        // All other transformations(offset, rotation) and all transformations for other textures is ignored.
+        // This is for saving memory of material buffer, and the usage for other textures of this extension is very limited.
+        matinfo->normalTextureTransformScale = material.normal_texture.has_transform ? dm::float2(material.normal_texture.transform.scale[0], material.normal_texture.transform.scale[1]) : 1.0f;
+        // Log warnings for all unsupported texture coordinate transformations
+        if (material.pbr_metallic_roughness.base_color_texture.has_transform ||
+            material.pbr_metallic_roughness.metallic_roughness_texture.has_transform ||
+            material.pbr_specular_glossiness.diffuse_texture.has_transform ||
+            material.pbr_specular_glossiness.specular_glossiness_texture.has_transform ||
+            material.occlusion_texture.has_transform ||
+            material.emissive_texture.has_transform ||
+            (material.normal_texture.has_transform &&
+             (material.normal_texture.transform.rotation  != 0.0f ||
+              material.normal_texture.transform.offset[0] != 0.0f ||
+              material.normal_texture.transform.offset[1] != 0.0f)))
+        {
+            log::warning("Material '%s' uses the KHR_texture_transform extension, which is not supported on non-scale transformations and all textures except normal", material.name ? material.name : "<Unnamed>");
+        }
+
         switch (material.alpha_mode)
         {
         case cgltf_alpha_mode_opaque: matinfo->domain = useTransmission ? MaterialDomain::Transmissive : MaterialDomain::Opaque; break;
