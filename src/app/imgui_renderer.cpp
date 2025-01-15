@@ -53,8 +53,12 @@ using namespace donut::app;
 
 ImGui_Renderer::ImGui_Renderer(DeviceManager *devManager)
     : IRenderPass(devManager)
+    , m_supportExplicitDisplayScaling(devManager->GetDeviceParams().supportExplicitDisplayScaling)
 {
     ImGui::CreateContext();
+
+    m_defaultFont = std::make_shared<RegisteredFont>(nullptr, false, 13.f);
+    m_fonts.push_back(m_defaultFont);
 }
 
 ImGui_Renderer::~ImGui_Renderer()
@@ -92,21 +96,45 @@ bool ImGui_Renderer::Init(std::shared_ptr<ShaderFactory> shaderFactory)
     return imgui_nvrhi->init(GetDevice(), shaderFactory);
 }
 
-ImFont* ImGui_Renderer::LoadFont(IFileSystem& fs, const std::filesystem::path& fontFile, float fontSize)
+std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromFile(IFileSystem& fs,
+    const std::filesystem::path& fontFile, float fontSize)
 {
 	auto fontData = fs.readFile(fontFile);
 	if (!fontData)
 		return nullptr;
 
-    ImFontConfig fontConfig;
+	auto font = std::make_shared<RegisteredFont>(fontData, false, fontSize);
+    m_fonts.push_back(font);
 
-	// XXXX mk: this appears to be a bug: the atlas copies (& owns) the data when the
-	// flag is set to false !
-	fontConfig.FontDataOwnedByAtlas = false;
-	ImFont* imFont = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
-		(void*)(fontData->data()), (int)(fontData->size()), fontSize, &fontConfig);
+    return std::move(font);
+}
 
-	return imFont;
+std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryInternal(void const* pData, size_t size,
+    bool compressed, float fontSize)
+{
+    if (!pData || !size)
+        return nullptr;
+
+    // Copy the font data into a blob to make the RegisteredFont object own it
+    void* dataCopy = malloc(size);
+    memcpy(dataCopy, pData, size);
+    std::shared_ptr<vfs::Blob> blob = std::make_shared<vfs::Blob>(dataCopy, size);
+    
+    auto font = std::make_shared<RegisteredFont>(blob, compressed, fontSize);
+    m_fonts.push_back(font);
+
+    return std::move(font);
+}
+
+std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromMemory(void const* pData, size_t size, float fontSize)
+{
+    return CreateFontFromMemoryInternal(pData, size, false, fontSize);
+}
+
+std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryCompressed(void const* pData, size_t size,
+    float fontSize)
+{
+    return CreateFontFromMemoryInternal(pData, size, true, fontSize);
 }
 
 bool ImGui_Renderer::KeyboardUpdate(int key, int scancode, int action, int mods)
@@ -208,25 +236,41 @@ bool ImGui_Renderer::MouseButtonUpdate(int button, int action, int mods)
 
 void ImGui_Renderer::Animate(float elapsedTimeSeconds)
 {
-    if (!imgui_nvrhi) return;
+    if (!imgui_nvrhi)
+        return;
 
-    int w, h;
+    // Make sure that all registered fonts have corresponding ImFont objects at the current DPI scale
     float scaleX, scaleY;
-
-    GetDeviceManager()->GetWindowDimensions(w, h);
     GetDeviceManager()->GetDPIScaleInfo(scaleX, scaleY);
+    for (auto& font : m_fonts)
+    {
+        if (!font->GetScaledFont())
+            font->CreateScaledFont(m_supportExplicitDisplayScaling ? scaleX : 1.f);
+    }
+
+    // Creates the font texture if it's not yet valid
+    imgui_nvrhi->updateFontTexture();
+    
+    int w, h;
+    GetDeviceManager()->GetWindowDimensions(w, h);
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2(float(w), float(h));
-    io.DisplayFramebufferScale.x = scaleX;
-    io.DisplayFramebufferScale.y = scaleY;
+    if (!m_supportExplicitDisplayScaling)
+    {
+        io.DisplayFramebufferScale.x = scaleX;
+        io.DisplayFramebufferScale.y = scaleY;
+    }
 
     io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
     io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
     io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
     io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 
-    imgui_nvrhi->beginFrame(elapsedTimeSeconds);
+    io.DeltaTime = elapsedTimeSeconds;
+    io.MouseDrawCursor = false;
+
+    ImGui::NewFrame();
 }
 
 void ImGui_Renderer::Render(nvrhi::IFramebuffer* framebuffer)
@@ -263,12 +307,34 @@ void ImGui_Renderer::BackBufferResizing()
     if(imgui_nvrhi) imgui_nvrhi->backbufferResizing();
 }
 
+void ImGui_Renderer::DisplayScaleChanged(float scaleX, float scaleY)
+{
+    // Apps that don't implement explicit scaling won't expect the fonts to be resized etc.
+    if (!m_supportExplicitDisplayScaling)
+        return;
+
+    auto& io = ImGui::GetIO();
+
+    // Clear the ImGui font atlas and invalidate the font texture
+    // to re-register and re-rasterize all fonts on the next frame (see Animate)
+    io.Fonts->Clear();
+    io.Fonts->TexID = 0;
+
+    for (auto& font : m_fonts)
+        font->ReleaseScaledFont();
+        
+    ImGui::GetStyle() = ImGuiStyle();
+    ImGui::GetStyle().ScaleAllSizes(scaleX);
+}
+
 void ImGui_Renderer::BeginFullScreenWindow()
 {
-    int width, height;
-    GetDeviceManager()->GetWindowDimensions(width, height);
+    ImGuiIO const& io = ImGui::GetIO();
     ImGui::SetNextWindowPos(ImVec2(0.f, 0.f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(float(width), float(height)), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(
+        io.DisplaySize.x / io.DisplayFramebufferScale.x,
+        io.DisplaySize.y / io.DisplayFramebufferScale.y),
+        ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
     ImGui::SetNextWindowBgAlpha(0.f);
     ImGui::Begin(" ", 0, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
@@ -276,11 +342,10 @@ void ImGui_Renderer::BeginFullScreenWindow()
 
 void ImGui_Renderer::DrawScreenCenteredText(const char* text)
 {
-    int width, height;
-    GetDeviceManager()->GetWindowDimensions(width, height);
+    ImGuiIO const& io = ImGui::GetIO();
     ImVec2 textSize = ImGui::CalcTextSize(text);
-    ImGui::SetCursorPosX((float(width) - textSize.x) * 0.5f);
-    ImGui::SetCursorPosY((float(height) - textSize.y) * 0.5f);
+    ImGui::SetCursorPosX((io.DisplaySize.x / io.DisplayFramebufferScale.x - textSize.x) * 0.5f);
+    ImGui::SetCursorPosY((io.DisplaySize.y / io.DisplayFramebufferScale.y - textSize.y) * 0.5f);
     ImGui::TextUnformatted(text);
 }
 
@@ -288,4 +353,36 @@ void ImGui_Renderer::EndFullScreenWindow()
 {
     ImGui::End();
     ImGui::PopStyleVar();
+}
+
+void RegisteredFont::CreateScaledFont(float displayScale)
+{
+    ImFontConfig fontConfig;
+    fontConfig.SizePixels = m_sizeAtDefaultScale * displayScale;
+
+    if (m_data)
+    {
+        fontConfig.FontDataOwnedByAtlas = false;
+        if (m_isCompressed)
+        {
+            m_imFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
+                (void*)(m_data->data()), (int)(m_data->size()), 0.f, &fontConfig);
+        }
+        else
+        {
+            m_imFont = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+                (void*)(m_data->data()), (int)(m_data->size()), 0.f, &fontConfig);
+        }
+    }
+    else
+    {
+        m_imFont = ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+    }
+
+    ImGui::GetIO().Fonts->TexID = 0;
+}
+
+void RegisteredFont::ReleaseScaledFont()
+{
+    m_imFont = nullptr;
 }

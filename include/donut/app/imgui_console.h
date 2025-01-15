@@ -63,6 +63,7 @@ namespace donut::engine::console
 
 namespace donut::app
 {
+	class RegisteredFont;
 
 	class ImGui_Console 
 	{
@@ -71,7 +72,7 @@ namespace donut::app
 		struct Options
 		{
 			
-			ImFont* font = nullptr;        // it is recommended to specify a monospace font
+			std::shared_ptr<RegisteredFont> font;        // it is recommended to specify a monospace font
 
 			bool auto_scroll = true;       // automatically keep log output scrolled to the most recent item
 			bool scroll_to_bottom = false; // scoll to botom on console creation, if the log is not empty
