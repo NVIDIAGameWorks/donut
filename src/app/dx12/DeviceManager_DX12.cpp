@@ -538,11 +538,14 @@ bool DeviceManager_DX12::CreateRenderTargets()
 
 void DeviceManager_DX12::ReleaseRenderTargets()
 {
-    // Make sure that all frames have finished rendering
-    m_NvrhiDevice->waitForIdle();
+    if (m_NvrhiDevice)
+    {
+        // Make sure that all frames have finished rendering
+        m_NvrhiDevice->waitForIdle();
 
-    // Release all in-flight references to the render targets
-    m_NvrhiDevice->runGarbageCollection();
+        // Release all in-flight references to the render targets
+        m_NvrhiDevice->runGarbageCollection();
+    }
 
     // Set the events so that WaitForSingleObject in OneFrame will not hang later
     for(auto e : m_FrameFenceEvents)
