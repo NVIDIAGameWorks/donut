@@ -64,7 +64,7 @@ namespace donut::app
 {
     struct ImGui_NVRHI
     {
-        nvrhi::DeviceHandle renderer;
+        nvrhi::DeviceHandle m_device;
         nvrhi::CommandListHandle m_commandList;
 
         nvrhi::ShaderHandle vertexShader;
@@ -86,15 +86,14 @@ namespace donut::app
         std::vector<ImDrawVert> vtxBuffer;
         std::vector<ImDrawIdx> idxBuffer;
 
-        bool init(nvrhi::DeviceHandle renderer, std::shared_ptr<engine::ShaderFactory> shaderFactory);
-        bool beginFrame(float elapsedTimeSeconds);
+        bool init(nvrhi::IDevice* device, std::shared_ptr<engine::ShaderFactory> shaderFactory);
+        bool updateFontTexture();
         bool render(nvrhi::IFramebuffer* framebuffer);
         void backbufferResizing();
 
     private:
         bool reallocateBuffer(nvrhi::BufferHandle& buffer, size_t requiredSize, size_t reallocateSize, bool isIndexBuffer);
 
-        bool createFontTexture(nvrhi::ICommandList* commandList);
 
         nvrhi::IGraphicsPipeline* getPSO(nvrhi::IFramebuffer* fb);
         nvrhi::IBindingSet* getBindingSet(nvrhi::ITexture* texture);

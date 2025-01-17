@@ -1131,8 +1131,10 @@ bool DeviceManager_VK::Present()
     m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
 
 #ifndef _WIN32
-    if (m_DeviceParams.vsyncEnabled)
+    if (m_DeviceParams.vsyncEnabled || m_DeviceParams.enableDebugRuntime)
     {
+        // according to vulkan-tutorial.com, "the validation layer implementation expects
+        // the application to explicitly synchronize with the GPU"
         m_PresentQueue.waitIdle();
     }
 #endif

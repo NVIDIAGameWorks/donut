@@ -85,7 +85,7 @@ Texture2D t_Transmission         : REGISTER_SRV(MATERIAL_TRANSMISSION_SLOT,  MAT
 Texture2D t_Opacity              : REGISTER_SRV(MATERIAL_OPACITY_SLOT,       MATERIAL_REGISTER_SPACE);
 SamplerState s_MaterialSampler   : REGISTER_SAMPLER(MATERIAL_SAMPLER_SLOT,   MATERIAL_SAMPLER_REGISTER_SPACE);
 
-MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord)
+MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord, float2 normalTexCoordScale)
 {
     MaterialTextureSample values = DefaultMaterialTextures();
 
@@ -106,7 +106,7 @@ MaterialTextureSample SampleMaterialTexturesAuto(float2 texCoord)
 
     if ((g_Material.flags & MaterialFlags_UseNormalTexture) != 0)
     {
-        values.normal = t_Normal.Sample(s_MaterialSampler, texCoord);
+        values.normal = t_Normal.Sample(s_MaterialSampler, texCoord * normalTexCoordScale);
     }
 
     if ((g_Material.flags & MaterialFlags_UseOcclusionTexture) != 0)

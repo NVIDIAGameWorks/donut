@@ -336,9 +336,11 @@ dm::float2 TemporalAntiAliasingPass::GetCurrentPixelOffset()
         default:
         case TemporalAntiAliasingJitter::MSAA:
         {
+            // This is the standard 8x MSAA sample pattern, source can be found e.g. here:
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels
             const float2 offsets[] = {
                 float2(0.0625f, -0.1875f), float2(-0.0625f, 0.1875f), float2(0.3125f, 0.0625f), float2(-0.1875f, -0.3125f),
-                float2(-0.3125f, 0.3125f), float2(-0.4375f, 0.0625f), float2(0.1875f, 0.4375f), float2(0.4375f, -0.4375f)
+                float2(-0.3125f, 0.3125f), float2(-0.4375f, -0.0625f), float2(0.1875f, 0.4375f), float2(0.4375f, -0.4375f)
             };
 
             return offsets[m_FrameIndex % 8];

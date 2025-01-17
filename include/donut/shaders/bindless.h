@@ -146,8 +146,7 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     ret.occlusionTextureIndex = int(f.w);
     ret.transmissionTextureIndex = int(g.x);
     ret.opacityTextureIndex = int(g.y);
-    ret.padding1 = int(f.y);
-    ret.padding2 = int(f.z);
+    ret.normalTextureTransformScale = asfloat(g.zw);
     return ret;   
 }
 

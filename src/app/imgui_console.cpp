@@ -171,7 +171,7 @@ void ImGui_Console::Render(bool* open)
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
 
 	if (m_Options.font)
-		ImGui::PushFont(m_Options.font);
+		ImGui::PushFont(m_Options.font->GetScaledFont());
 	for (auto const& item : m_ItemsLog)
 	{
 		using namespace donut::log;
@@ -209,7 +209,7 @@ void ImGui_Console::Render(bool* open)
 
 	// Command line
 	if (m_Options.font)
-		ImGui::PushFont(m_Options.font);
+		ImGui::PushFont(m_Options.font->GetScaledFont());
 
 	bool reclaim_focus = false;
 	auto flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
