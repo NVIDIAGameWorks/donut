@@ -70,6 +70,7 @@ namespace donut::engine
         PrevTransform,
         JointIndices,
         JointWeights,
+        CurveRadius,
 
         Count
     };
@@ -183,10 +184,20 @@ namespace donut::engine
         std::vector<uint32_t> tangentData;
         std::vector<dm::vector<uint16_t, 4>> jointData;
         std::vector<dm::float4> weightData;
+        std::vector<float> radiusData;
 
         [[nodiscard]] bool hasAttribute(VertexAttribute attr) const { return vertexBufferRanges[int(attr)].byteSize != 0; }
         nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) { return vertexBufferRanges[int(attr)]; }
         [[nodiscard]] const nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) const { return vertexBufferRanges[int(attr)]; }
+    };
+
+    enum class MeshGeometryPrimitiveType : uint8_t
+    {
+        Triangles,
+        Lines,
+        LineStrip,
+
+        Count
     };
 
     struct MeshGeometry
@@ -198,6 +209,8 @@ namespace donut::engine
         uint32_t numIndices = 0;
         uint32_t numVertices = 0;
         int globalGeometryIndex = 0;
+
+        MeshGeometryPrimitiveType type = MeshGeometryPrimitiveType::Triangles;
 
         virtual ~MeshGeometry() = default;
     };
