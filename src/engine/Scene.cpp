@@ -693,22 +693,25 @@ void Scene::RefreshBuffers(nvrhi::ICommandList* commandList, uint32_t frameIndex
         }
     }
 
-    uint32_t geometryResourceIndex = 0;
-    for (const auto& mesh : m_SceneGraph->GetMeshes())
+    if (!m_Resources->geometryData.empty())
     {
-        if (arraysAllocated)
+        uint32_t geometryResourceIndex = 0;
+        for (const auto& mesh : m_SceneGraph->GetMeshes())
         {
-            break;
-        }
-
-        for (const auto& geometry : mesh->geometries)
-        {
-            if (geometry->numIndices != m_Resources->geometryData[geometryResourceIndex].numIndices)
+            if (arraysAllocated)
             {
-                arraysAllocated = true;
                 break;
             }
-            ++geometryResourceIndex;
+
+            for (const auto& geometry : mesh->geometries)
+            {
+                if (geometry->numIndices != m_Resources->geometryData[geometryResourceIndex].numIndices)
+                {
+                    arraysAllocated = true;
+                    break;
+                }
+                ++geometryResourceIndex;
+            }
         }
     }
 
