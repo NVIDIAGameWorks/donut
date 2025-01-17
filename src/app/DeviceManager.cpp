@@ -70,6 +70,16 @@ freely, subject to the following restrictions:
 #pragma comment(lib, "shcore.lib")
 #endif
 
+#if defined(_WINDOWS) && DONUT_FORCE_DISCRETE_GPU
+extern "C"
+{
+    // Declaring this symbol makes the OS run the app on the discrete GPU on NVIDIA Optimus laptops by default
+    __declspec(dllexport) DWORD NvOptimusEnablement = 1;
+    // Same as above, for laptops with AMD GPUs
+    __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
 using namespace donut::app;
 
 // The joystick interface in glfw is not per-window like the keys, mouse, etc. The joystick callbacks
