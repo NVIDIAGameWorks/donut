@@ -453,9 +453,13 @@ bool GltfImporter::Load(
         {
             const cgltf_primitive& prim = mesh.primitives[prim_idx];
 
-            if (prim.type != cgltf_primitive_type_triangles ||
+            if ((prim.type != cgltf_primitive_type_triangles &&
+                 prim.type != cgltf_primitive_type_line_strip &&
+                 prim.type != cgltf_primitive_type_lines) ||
                 prim.attributes_count == 0)
+            {
                 continue;
+            }
 
             if (prim.indices)
                 totalIndices += prim.indices->count;
@@ -486,6 +490,7 @@ bool GltfImporter::Load(
     buffers->normalData.resize(totalVertices);
     buffers->tangentData.resize(totalVertices);
     buffers->texcoord1Data.resize(totalVertices);
+    buffers->radiusData.resize(totalVertices);
     if (hasJoints)
     {
         // Allocate joint/weight arrays for all the vertices in the model.
@@ -521,9 +526,13 @@ bool GltfImporter::Load(
         {
             const cgltf_primitive& prim = mesh.primitives[prim_idx];
 
-            if (prim.type != cgltf_primitive_type_triangles ||
+            if ((prim.type != cgltf_primitive_type_triangles &&
+                 prim.type != cgltf_primitive_type_line_strip &&
+                 prim.type != cgltf_primitive_type_lines) ||
                 prim.attributes_count == 0)
+            {
                 continue;
+            }
 
             if (prim.indices)
             {
@@ -539,6 +548,7 @@ bool GltfImporter::Load(
             const cgltf_accessor* texcoords = nullptr;
             const cgltf_accessor* joint_weights = nullptr;
             const cgltf_accessor* joint_indices = nullptr;
+            const cgltf_accessor* radius = nullptr;
             
             for (size_t attr_idx = 0; attr_idx < prim.attributes_count; attr_idx++)
             {
@@ -576,6 +586,14 @@ bool GltfImporter::Load(
                     assert(attr.data->type == cgltf_type_vec4);
                     assert(attr.data->component_type == cgltf_component_type_r_8u || attr.data->component_type == cgltf_component_type_r_16u || attr.data->component_type == cgltf_component_type_r_32f);
                     joint_weights = attr.data;
+                    break;
+                case cgltf_attribute_type_custom:
+                    if (strncmp(attr.name, "_RADIUS", 7) == 0)
+                    {
+                        assert(attr.data->type == cgltf_type_scalar);
+                        assert(attr.data->component_type == cgltf_component_type_r_32f);
+                        radius = attr.data;
+                    }
                     break;
                 default:
                     break;
@@ -660,6 +678,25 @@ bool GltfImporter::Load(
                     positionSrc += positionStride;
                     ++positionDst;
                 }
+            }
+
+            if (radius)
+            {
+                auto [radiusSrc, radiusStride] = cgltf_buffer_iterator(radius, sizeof(float));
+                float* radiusDst = buffers->radiusData.data() + totalVertices;
+                for (size_t v_idx = 0; v_idx < radius->count; v_idx++)
+                {
+                    *radiusDst = *(const float*)radiusSrc;
+
+                    bounds |= *radiusDst;
+
+                    radiusSrc += radiusStride;
+                    ++radiusDst;
+                }
+            }
+            else
+            {
+                buffers->radiusData.clear();
             }
 
             if (normals)
@@ -930,6 +967,19 @@ bool GltfImporter::Load(
             geometry->numIndices = (uint32_t)indexCount;
             geometry->numVertices = (uint32_t)positions->count;
             geometry->objectSpaceBounds = bounds;
+            switch (prim.type)
+            {
+                case cgltf_primitive_type_triangles:
+                    geometry->type = MeshGeometryPrimitiveType::Triangles;
+                    break;
+                case cgltf_primitive_type_lines:
+                    geometry->type = MeshGeometryPrimitiveType::Lines;
+                    break;
+                case cgltf_primitive_type_line_strip:
+                    geometry->type = MeshGeometryPrimitiveType::LineStrip;
+                    break;
+            }
+
             minfo->objectSpaceBounds |= bounds;
             minfo->totalIndices += geometry->numIndices;
             minfo->totalVertices += geometry->numVertices;

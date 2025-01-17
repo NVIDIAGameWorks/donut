@@ -178,6 +178,11 @@ float3 computeRayIntersectionBarycentrics(float3 vertices[3], float3 rayOrigin, 
     return float3(1.f - alpha - beta, alpha, beta);
 }
 
+float interpolate(float vertices[3], float3 bary)
+{
+    return vertices[0] * bary[0] + vertices[1] * bary[1] + vertices[2] * bary[2];
+}
+
 float2 interpolate(float2 vertices[3], float3 bary)
 {
     return vertices[0] * bary[0] + vertices[1] * bary[1] + vertices[2] * bary[2];

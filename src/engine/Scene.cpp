@@ -693,6 +693,25 @@ void Scene::RefreshBuffers(nvrhi::ICommandList* commandList, uint32_t frameIndex
         }
     }
 
+    uint32_t geometryResourceIndex = 0;
+    for (const auto& mesh : m_SceneGraph->GetMeshes())
+    {
+        if (arraysAllocated)
+        {
+            break;
+        }
+
+        for (const auto& geometry : mesh->geometries)
+        {
+            if (geometry->numIndices != m_Resources->geometryData[geometryResourceIndex].numIndices)
+            {
+                arraysAllocated = true;
+                break;
+            }
+            ++geometryResourceIndex;
+        }
+    }
+
     if (m_SceneStructureChanged || arraysAllocated)
     {
         for (const auto& mesh : m_SceneGraph->GetMeshes())
@@ -937,6 +956,12 @@ void Scene::CreateMeshBuffers(nvrhi::ICommandList* commandList)
                     buffers->jointData.size() * sizeof(buffers->jointData[0]), bufferDesc.byteSize);
             }
 
+            if (!buffers->radiusData.empty())
+            {
+                AppendBufferRange(buffers->getVertexBufferRange(VertexAttribute::CurveRadius),
+                    buffers->radiusData.size() * sizeof(buffers->radiusData[0]), bufferDesc.byteSize);
+            }
+
             buffers->vertexBuffer = m_Device->createBuffer(bufferDesc);
             if (m_DescriptorTable)
             {
@@ -993,6 +1018,13 @@ void Scene::CreateMeshBuffers(nvrhi::ICommandList* commandList)
                 const auto& range = buffers->getVertexBufferRange(VertexAttribute::JointIndices);
                 commandList->writeBuffer(buffers->vertexBuffer, buffers->jointData.data(), range.byteSize, range.byteOffset);
                 std::vector<vector<uint16_t, 4>>().swap(buffers->jointData);
+            }
+
+            if (!buffers->radiusData.empty())
+            {
+                const auto& range = buffers->getVertexBufferRange(VertexAttribute::CurveRadius);
+                commandList->writeBuffer(buffers->vertexBuffer, buffers->radiusData.data(), range.byteSize, range.byteOffset);
+                std::vector<float>().swap(buffers->radiusData);
             }
 
             nvrhi::ResourceStates state = nvrhi::ResourceStates::VertexBuffer | nvrhi::ResourceStates::ShaderResource;
@@ -1211,6 +1243,8 @@ void Scene::UpdateGeometry(const std::shared_ptr<MeshInfo>& mesh)
             ? uint32_t(vertexOffset * sizeof(uint32_t) + mesh->buffers->getVertexBufferRange(VertexAttribute::Normal).byteOffset) : ~0u;
         gdata.tangentOffset = mesh->buffers->hasAttribute(VertexAttribute::Tangent)
             ? uint32_t(vertexOffset * sizeof(uint32_t) + mesh->buffers->getVertexBufferRange(VertexAttribute::Tangent).byteOffset) : ~0u;
+        gdata.curveRadiusOffset = mesh->buffers->hasAttribute(VertexAttribute::CurveRadius)
+            ? uint32_t(vertexOffset * sizeof(float) + mesh->buffers->getVertexBufferRange(VertexAttribute::CurveRadius).byteOffset) : ~0u;
         gdata.materialIndex = geometry->material ? geometry->material->materialID : ~0u;
     }
 }
