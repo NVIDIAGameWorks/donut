@@ -176,6 +176,7 @@ namespace donut::engine
         std::shared_ptr<DescriptorHandle> vertexBufferDescriptor;
         std::shared_ptr<DescriptorHandle> instnaceBufferDescriptor;
         std::array<nvrhi::BufferRange, size_t(VertexAttribute::Count)> vertexBufferRanges;
+        std::vector<nvrhi::BufferRange> morphTargetBufferRange;
         std::vector<uint32_t> indexData;
         std::vector<dm::float3> positionData;
         std::vector<dm::float2> texcoord1Data;
@@ -185,6 +186,7 @@ namespace donut::engine
         std::vector<dm::vector<uint16_t, 4>> jointData;
         std::vector<dm::float4> weightData;
         std::vector<float> radiusData;
+        std::vector<dm::float4> morphTargetData;
 
         [[nodiscard]] bool hasAttribute(VertexAttribute attr) const { return vertexBufferRanges[int(attr)].byteSize != 0; }
         nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) { return vertexBufferRanges[int(attr)]; }
@@ -227,6 +229,7 @@ namespace donut::engine
         uint32_t totalIndices = 0;
         uint32_t totalVertices = 0;
         int globalMeshIndex = 0;
+        bool isMorphTargetAnimationMesh = false;
         nvrhi::rt::AccelStructHandle accelStruct; // for use by applications
         bool isSkinPrototype = false;
 
