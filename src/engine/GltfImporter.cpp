@@ -443,6 +443,7 @@ bool GltfImporter::Load(
     
     size_t totalIndices = 0;
     size_t totalVertices = 0;
+    size_t morphTargetTotalVertices = 0;
     bool hasJoints = false;
 
     for (size_t mesh_idx = 0; mesh_idx < objects->meshes_count; mesh_idx++)
@@ -499,6 +500,7 @@ bool GltfImporter::Load(
         buffers->weightData.resize(totalVertices);
     }
 
+    morphTargetTotalVertices = totalVertices;
     totalIndices = 0;
     totalVertices = 0;
 
@@ -521,7 +523,10 @@ bool GltfImporter::Load(
         meshes.push_back(minfo);
 
         meshMap[&mesh] = minfo;
-        
+
+        size_t morphTargetDataCount = 0;
+        std::vector<std::vector<dm::float3>> morphTargetData;
+
         for (size_t prim_idx = 0; prim_idx < mesh.primitives_count; prim_idx++)
         {
             const cgltf_primitive& prim = mesh.primitives[prim_idx];
@@ -962,6 +967,61 @@ bool GltfImporter::Load(
                 geometry->material = emptyMaterial;
             }
 
+            if (prim.targets_count > 0)
+            {
+                minfo->isMorphTargetAnimationMesh = true;
+                morphTargetData.resize(prim.targets_count);
+
+                for (uint32_t target_idx = 0; target_idx < prim.targets_count; target_idx++)
+                {
+                    const cgltf_morph_target& target = prim.targets[target_idx];
+                    const cgltf_accessor* target_positions = nullptr;
+                    const cgltf_accessor* target_normals = nullptr;
+
+                    for (size_t attr_idx = 0; attr_idx < target.attributes_count; attr_idx++)
+                    {
+                        const cgltf_attribute& attr = target.attributes[attr_idx];
+                        switch (attr.type)
+                        {
+                        case cgltf_attribute_type_position:
+                            assert(attr.data->type == cgltf_type_vec3);
+                            assert(attr.data->component_type == cgltf_component_type_r_32f);
+                            target_positions = attr.data;
+                            break;
+                        case cgltf_attribute_type_normal:
+                            assert(attr.data->type == cgltf_type_vec3);
+                            assert(attr.data->component_type == cgltf_component_type_r_32f);
+                            target_normals = attr.data;
+                            break;
+                        }
+                    }
+
+                    if (target_positions)
+                    {
+                        auto [positionSrc, positionStride] = cgltf_buffer_iterator(positions, sizeof(float) * 3);
+                        auto [morphTargetPositionSrc, morphTargetPositionStride] = cgltf_buffer_iterator(target_positions, sizeof(float) * 3);
+
+                        auto& morphTargetCurrentFrameData = morphTargetData[target_idx];
+                        morphTargetCurrentFrameData.resize(morphTargetTotalVertices);
+
+                        float3* morphTargetCurrentData = morphTargetCurrentFrameData.data() + totalVertices;
+                        for (size_t v_idx = 0; v_idx < positions->count; v_idx++)
+                        {
+                            *morphTargetCurrentData = *(const float3*)morphTargetPositionSrc;
+
+                            bounds |= *morphTargetCurrentData;
+
+                            morphTargetPositionSrc += morphTargetPositionStride;
+                            ++morphTargetCurrentData;
+
+                            positionSrc += positionStride;
+                        }
+
+                        morphTargetDataCount += positions->count;
+                    }
+                }
+            }
+
             geometry->indexOffsetInMesh = minfo->totalIndices;
             geometry->vertexOffsetInMesh = minfo->totalVertices;
             geometry->numIndices = (uint32_t)indexCount;
@@ -987,6 +1047,31 @@ bool GltfImporter::Load(
 
             totalIndices += geometry->numIndices;
             totalVertices += geometry->numVertices;
+        }
+
+        if (morphTargetData.size() > 0)
+        {
+            size_t morphTargetDataSize = 0;
+
+            const size_t morphTargetFrameBufferSize = morphTargetData[0].size() * sizeof(float4);
+            buffers->morphTargetData.reserve(morphTargetDataCount);
+            buffers->morphTargetBufferRange.reserve(morphTargetData.size());
+
+            morphTargetDataCount = 0;
+            for (const auto& morphTargetCurrentFrameData : morphTargetData)
+            {
+                nvrhi::BufferRange range = {};
+                range.byteOffset = morphTargetDataCount * sizeof(float4);
+                range.byteSize = morphTargetFrameBufferSize;
+                buffers->morphTargetBufferRange.push_back(range);
+
+                for (const auto& morphTargetCurrentData : morphTargetCurrentFrameData)
+                {
+                    buffers->morphTargetData.push_back(float4(morphTargetCurrentData, 0.0f));
+                    ++morphTargetDataCount;
+                }
+                morphTargetDataSize += range.byteSize;
+            }
         }
     }
 
