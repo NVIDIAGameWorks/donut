@@ -861,7 +861,7 @@ void UpdateMaterialConstantBuffer(nvrhi::ICommandList* commandList, const Materi
 inline void AppendBufferRange(nvrhi::BufferRange& range, size_t size, uint64_t& currentBufferSize)
 {
     range.byteOffset = currentBufferSize;
-    range.byteSize = nvrhi::align(size, 16llu);
+    range.byteSize = nvrhi::align(size, size_t(16));
     currentBufferSize += range.byteSize;
 }
 

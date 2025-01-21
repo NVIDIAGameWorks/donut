@@ -690,7 +690,7 @@ bool GltfImporter::Load(
         // Only scaling transformation for normal map texture coordinate is supported in importer.
         // All other transformations(offset, rotation) and all transformations for other textures is ignored.
         // This is for saving memory of material buffer, and the usage for other textures of this extension is very limited.
-        matinfo->normalTextureTransformScale = material.normal_texture.has_transform ? dm::float2(material.normal_texture.transform.scale[0], material.normal_texture.transform.scale[1]) : 1.0f;
+        matinfo->normalTextureTransformScale = material.normal_texture.has_transform ? dm::float2(material.normal_texture.transform.scale[0], material.normal_texture.transform.scale[1]) : dm::float2(1.0f);
         // Log warnings for all unsupported texture coordinate transformations
         if (material.pbr_metallic_roughness.base_color_texture.has_transform ||
             material.pbr_metallic_roughness.metallic_roughness_texture.has_transform ||
