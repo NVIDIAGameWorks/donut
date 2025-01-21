@@ -126,6 +126,12 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     uint4 e = buffer.Load4(offset + 16 * 4);
     uint4 f = buffer.Load4(offset + 16 * 5);
     uint4 g = buffer.Load4(offset + 16 * 6);
+    uint4 h = buffer.Load4(offset + 16 * 7);
+    uint4 i = buffer.Load4(offset + 16 * 8);
+    uint4 j = buffer.Load4(offset + 16 * 9);
+    uint4 k = buffer.Load4(offset + 16 * 10);
+    uint4 l = buffer.Load4(offset + 16 * 11);
+    uint4 m = buffer.Load4(offset + 16 * 12);
 
     MaterialConstants ret;
     ret.baseOrDiffuseColor = asfloat(a.xyz);
@@ -149,6 +155,20 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     ret.transmissionTextureIndex = int(g.x);
     ret.opacityTextureIndex = int(g.y);
     ret.normalTextureTransformScale = asfloat(g.zw);
+    ret.padding1 = h.xyz;
+    ret.sssScale = int(h.w);
+    ret.sssTransmissionColor = asfloat(i.xyz);
+    ret.sssAnisotropy = asfloat(i.w);
+    ret.sssScatteringColor = asfloat(j.xyz);
+    ret.hairMelanin = asfloat(j.w);
+    ret.hairBaseColor = asfloat(k.xyz);
+    ret.hairMelaninRedness = asfloat(k.w);
+    ret.hairLongitudinalRoughness = asfloat(l.x);
+    ret.hairAzimuthalRoughness = asfloat(l.y);
+    ret.hairIor = asfloat(l.z);
+    ret.hairCuticleAngle = asfloat(l.w);
+    ret.hairDiffuseReflectionTint = asfloat(m.xyz);
+    ret.hairDiffuseReflectionWeight = asfloat(m.w);
     return ret;   
 }
 

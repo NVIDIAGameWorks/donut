@@ -170,6 +170,282 @@ static const cgltf_image* ParseDdsImage(const cgltf_texture* texture, const cglt
     return nullptr;
 }
 
+namespace
+{
+    typedef struct cgltf_subsurface
+    {
+        cgltf_texture_view transmission_color_texture;
+        cgltf_float transmission_color[3];
+        cgltf_float scattering_color[3];
+        cgltf_float scale;
+        cgltf_float anisotropy;
+    } cgltf_subsurface;
+
+    typedef struct cgltf_hair
+    {
+        cgltf_float base_color[3];
+        cgltf_float melanin;
+        cgltf_float melaninRedness;
+        cgltf_float longitudinalRoughness;
+        cgltf_float azimuthalRoughness;
+        cgltf_float ior;
+        cgltf_float cuticleAngle;
+        cgltf_float diffuseReflectionWeight;
+        cgltf_float diffuse_reflection_tint[3];
+    } cgltf_hair;
+}
+
+// Parse subsurface scattering extension for glTF material:
+//
+// For setup the SSS properties for material, adding "NV_materials_subsurface" as extension name and setup the following properties:
+// - transmissionColor: Determines the base color of the SSS surface, it's similar to the diffuse albedo color for diffuse materials. This parameter can also be set with a texture map.
+// - scatteringColor: Determines the distance (mean free path) that light will be transported inside the SSS object for each color channel. Larger value will allow the corresponding color scattered further on the surface, it will look like a tail extends from the diffuse model.
+// - scale: A scale that controls the SSS intensity of the whole object.
+// - anisotropy: Determines the overall scattering direction of the volume phase function, the range is (-1, 1). When this value less then 0, it models backwards scattering. Vice versa, it models forward scattering when the value larger than 0. The volume is isotropic when this value is 0.
+//
+// Example:
+// "extensions": {
+//     "NV_materials_subsurface":{
+//         "transmissionColor": [1.0, 1.0, 1.0] ,
+//         "scatteringColor" : [0.856, 0.34, 0.3] ,
+//         "scale" : 20.0,
+//         "anisotropy" : -0.5
+//     },
+// }
+static int cgltf_parse_json_subsurface(cgltf_options* options, jsmntok_t const* tokens, int i, const uint8_t* json_chunk, cgltf_subsurface* out_subsurface)
+{
+    CGLTF_CHECK_TOKTYPE(tokens[i], JSMN_OBJECT);
+    int size = tokens[i].size;
+    ++i;
+
+    for (int j = 0; j < size; ++j)
+    {
+        CGLTF_CHECK_KEY(tokens[i]);
+
+        if (cgltf_json_strcmp(tokens + i, json_chunk, "transmissionColorTexture") == 0)
+        {
+            i = cgltf_parse_json_texture_view(options, tokens, i + 1, json_chunk, &out_subsurface->transmission_color_texture);
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "transmissionColor") == 0)
+        {
+            i = cgltf_parse_json_float_array(tokens, i + 1, json_chunk, out_subsurface->transmission_color, 3);
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "scatteringColor") == 0)
+        {
+            i = cgltf_parse_json_float_array(tokens, i + 1, json_chunk, out_subsurface->scattering_color, 3);
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "scale") == 0)
+        {
+            ++i;
+            out_subsurface->scale = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "anisotropy") == 0)
+        {
+            ++i;
+            out_subsurface->anisotropy = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else
+        {
+            i = cgltf_skip_json(tokens, i + 1);
+        }
+
+        if (i < 0)
+        {
+            return i;
+        }
+    }
+
+    return i;
+}
+
+// Parse hair extension for glTF material:
+//
+// For setup the hair properties for material, adding "NV_materials_hair" as extension name and setup the following properties:
+// - baseColor: The color of the hair, only will be used when the absorption model is color based.
+// - melanin: The melanin is a natural substance that gives color to the hair, the range is [0, 1], 0 means no melanin, which makes the hair white; while 1 means maximum melanin, which makes hair black. This only will be used when the hair absorption model is physics based.
+// - melaninRedness: Melanin redness is a parameter that controls the redness of hair by adjusting the ratio of red pheomelanin to brown eumelanin, the range is [0, 1]. This only will be used when the hair absorption model is physics based.
+// - longitudinalRoughness: Roughness on hair longitudinal direction.
+// - azimuthalRoughness: Roughness on hair azimuthal direction.
+// - ior: The index of refraction of the hair volume.
+// - cuticleAngle: The cuticle angle on top of the hair, the larger angle we have, the 2 hair highlight (R and TRT highlights) will be further away from each other. 0 means completely smooth hair on the cuticle.
+// - diffuseReflectionWeight: The weight of diffuse lobe of hair.
+// - diffuseReflectionTint: The tint color of hair.
+//
+// Example:
+// "extensions": {
+//     "NV_materials_hair" : {
+//         "baseColor": [0.227, 0.130, 0.035] ,
+//         "melanin" : 0.6,
+//         "melaninRedness" : 0.0,
+//         "longitudinalRoughness" : 0.354,
+//         "azimuthalRoughness" : 0.6,
+//         "diffuseReflectionWeight" : 0.0,
+//         "ior" : 1.55,
+//         "cuticleAngle" : 3.0,
+//         "diffuseReflectionTint" : [0.02, 0.008, 0.008]
+//     }
+// }
+static int cgltf_parse_json_hair(cgltf_options* options, jsmntok_t const* tokens, int i, const uint8_t* json_chunk, cgltf_hair* out_hair)
+{
+    CGLTF_CHECK_TOKTYPE(tokens[i], JSMN_OBJECT);
+    int size = tokens[i].size;
+    ++i;
+
+    for (int j = 0; j < size; ++j)
+    {
+        CGLTF_CHECK_KEY(tokens[i]);
+
+        if (cgltf_json_strcmp(tokens + i, json_chunk, "baseColor") == 0)
+        {
+            i = cgltf_parse_json_float_array(tokens, i + 1, json_chunk, out_hair->base_color, 3);
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "melanin") == 0)
+        {
+            ++i;
+            out_hair->melanin = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "melaninRedness") == 0)
+        {
+            ++i;
+            out_hair->melaninRedness = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "longitudinalRoughness") == 0)
+        {
+            ++i;
+            out_hair->longitudinalRoughness = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "azimuthalRoughness") == 0)
+        {
+            ++i;
+            out_hair->azimuthalRoughness = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "ior") == 0)
+        {
+            ++i;
+            out_hair->ior = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "cuticleAngle") == 0)
+        {
+            ++i;
+            out_hair->cuticleAngle = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "diffuseReflectionWeight") == 0)
+        {
+            ++i;
+            out_hair->diffuseReflectionWeight = cgltf_json_to_float(tokens + i, json_chunk);
+            ++i;
+        }
+        else if (cgltf_json_strcmp(tokens + i, json_chunk, "diffuseReflectionTint") == 0)
+        {
+            i = cgltf_parse_json_float_array(tokens, i + 1, json_chunk, out_hair->diffuse_reflection_tint, 3);
+        }
+        else
+        {
+            i = cgltf_skip_json(tokens, i + 1);
+        }
+
+        if (i < 0)
+        {
+            return i;
+        }
+    }
+
+    return i;
+}
+
+// Add support for subsurface scattering and hair in glTF
+// Note: SSS and Hair can't be set at the same time on the same material
+static const void ParseMaterialExtensions(cgltf_options* options, const cgltf_material* material, Material* matInfo)
+{
+    for (size_t i = 0; i < material->extensions_count; i++)
+    {
+        const cgltf_extension& ext = material->extensions[i];
+
+        if (!ext.name || !ext.data)
+        {
+            continue;
+        }
+
+        if (strcmp(ext.name, "NV_materials_subsurface") != 0 && strcmp(ext.name, "NV_materials_hair") != 0)
+        {
+            continue;
+        }
+
+        size_t extensionLength = strlen(ext.data);
+        if (extensionLength > 1024)
+        {
+            return; // safeguard against weird inputs
+        }
+
+        jsmn_parser parser;
+        jsmn_init(&parser);
+
+        // count the tokens, normally there are 3
+        int numTokens = jsmn_parse(&parser, ext.data, extensionLength, nullptr, 0);
+
+        // allocate the tokens on the stack
+        jsmntok_t* tokens = (jsmntok_t*)alloca(numTokens * sizeof(jsmntok_t));
+
+        // reset the parser and parse
+        jsmn_init(&parser);
+        int numParsed = jsmn_parse(&parser, ext.data, extensionLength, tokens, numTokens);
+        if (numParsed != numTokens)
+        {
+            donut::log::warning("Failed to parse the glTF material extension: %s", ext.data);
+            break;
+        }
+
+        if (tokens[0].type != JSMN_OBJECT)
+        {
+            // expecting that the extension is an object
+            donut::log::warning("Failed to parse the glTF material extension: %s", ext.data);
+            break;
+        }
+
+        const uint8_t* json_chunk = (const uint8_t*)ext.data;
+        int k = 0;
+        if (strcmp(ext.name, "NV_materials_subsurface") == 0)
+        {
+            matInfo->enableSubsurfaceScattering = true;
+            cgltf_subsurface gltf_subsurface = {};
+            cgltf_parse_json_subsurface(options, tokens, k, json_chunk, &gltf_subsurface);
+
+            matInfo->subsurface.transmissionColor = { gltf_subsurface.transmission_color[0], gltf_subsurface.transmission_color[1], gltf_subsurface.transmission_color[2] };
+            matInfo->subsurface.scatteringColor = { gltf_subsurface.scattering_color[0], gltf_subsurface.scattering_color[1], gltf_subsurface.scattering_color[2] };
+            matInfo->subsurface.scale = gltf_subsurface.scale;
+            matInfo->subsurface.anisotropy = gltf_subsurface.anisotropy;
+        }
+        else if (strcmp(ext.name, "NV_materials_hair") == 0)
+        {
+            matInfo->enableHair = true;
+            cgltf_hair gltf_hair = {};
+            cgltf_parse_json_hair(options, tokens, k, json_chunk, &gltf_hair);
+
+            matInfo->hair.baseColor = { gltf_hair.base_color[0], gltf_hair.base_color[1], gltf_hair.base_color[2] };
+            matInfo->hair.melanin = gltf_hair.melanin;
+            matInfo->hair.melaninRedness = gltf_hair.melaninRedness;
+            matInfo->hair.longitudinalRoughness = gltf_hair.longitudinalRoughness;
+            matInfo->hair.azimuthalRoughness = gltf_hair.azimuthalRoughness;
+            matInfo->hair.ior = gltf_hair.ior;
+            matInfo->hair.cuticleAngle = gltf_hair.cuticleAngle;
+            matInfo->hair.diffuseReflectionWeight = gltf_hair.diffuseReflectionWeight;
+            matInfo->hair.diffuseReflectionTint = { gltf_hair.diffuse_reflection_tint[0], gltf_hair.diffuse_reflection_tint[1], gltf_hair.diffuse_reflection_tint[2] };
+        }
+        else
+        {
+            donut::log::warning("Failed to parse the glTF material extension: %s", ext.data);
+        }
+    }
+}
+
 static const char* cgltf_error_to_string(cgltf_result res)
 {
     switch(res)
@@ -437,6 +713,9 @@ bool GltfImporter::Load(
         case cgltf_alpha_mode_blend: matinfo->domain = useTransmission ? MaterialDomain::TransmissiveAlphaBlended : MaterialDomain::AlphaBlended; break;
         default: break;
         }
+
+        // Parse SSS and Hair Extensions
+        ParseMaterialExtensions(&options, &material, matinfo.get());
 
         materials[&material] = matinfo;
     }

@@ -138,6 +138,31 @@ namespace donut::engine
         // See the comments on the other fields here.
         bool useSpecularGlossModel = false;
 
+        // Subsurface Scattering
+        bool enableSubsurfaceScattering = false;
+        struct SubsurfaceParams
+        {
+            dm::float3 transmissionColor = 0.5f;
+            dm::float3 scatteringColor = 0.5f;
+            float scale = 1.0f;
+            float anisotropy = 0.0f;
+        } subsurface;
+
+        // Hair
+        bool enableHair = false;
+        struct HairParams
+        {
+            dm::float3 baseColor = 1.0f;
+            float melanin = 0.5f;
+            float melaninRedness = 0.5f;
+            float longitudinalRoughness = 0.25f;
+            float azimuthalRoughness = 0.6f;
+            float diffuseReflectionWeight = 0.0f;
+            dm::float3 diffuseReflectionTint = 0.0f;
+            float ior = 1.55f;
+            float cuticleAngle = 3.0f;
+        } hair;
+
         // Toggles for the textures. Only effective if the corresponding texture is non-null.
         bool enableBaseOrDiffuseTexture = true;
         bool enableMetalRoughOrSpecularTexture = true;

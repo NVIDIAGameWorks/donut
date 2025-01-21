@@ -23,6 +23,27 @@
 #ifndef SURFACE_HLSLI
 #define SURFACE_HLSLI
 
+struct MaterialSubsurfaceParams
+{
+    float3 transmissionColor;
+    float3 scatteringColor;
+    float scale;
+    float anisotropy;
+};
+
+struct MaterialHairParams
+{
+    float3 baseColor;
+    float melanin;
+    float melaninRedness;
+    float longitudinalRoughness;
+    float azimuthalRoughness;
+    float ior;
+    float cuticleAngle;
+    float3 diffuseReflectionTint;
+    float diffuseReflectionWeight;
+};
+
 struct MaterialSample
 {
     float3 shadingNormal;
@@ -37,6 +58,8 @@ struct MaterialSample
     float metalness; // native in metal-rough, derived in spec-gloss
     float transmission;
     bool hasMetalRoughParams; // indicates that 'baseColor' and 'metalness' are valid
+    MaterialSubsurfaceParams subsurfaceParams;
+    MaterialHairParams hairParams;
 };
 
 MaterialSample DefaultMaterialSample()
@@ -54,6 +77,19 @@ MaterialSample DefaultMaterialSample()
     result.metalness = 0;
     result.transmission = 0;
     result.hasMetalRoughParams = false;
+    result.subsurfaceParams.transmissionColor = 0;
+    result.subsurfaceParams.scatteringColor = 0;
+    result.subsurfaceParams.scale = 0;
+    result.subsurfaceParams.anisotropy = 0;
+    result.hairParams.baseColor = 0;
+    result.hairParams.melanin = 0;
+    result.hairParams.melaninRedness = 0;
+    result.hairParams.longitudinalRoughness = 0;
+    result.hairParams.azimuthalRoughness = 0;
+    result.hairParams.ior = 0;
+    result.hairParams.cuticleAngle = 0;
+    result.hairParams.diffuseReflectionTint = 0;
+    result.hairParams.diffuseReflectionWeight = 0;
     return result;
 }
 
