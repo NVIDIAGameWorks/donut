@@ -634,9 +634,14 @@ void DeviceManager::UpdateWindowSize()
 
 void DeviceManager::WindowPosCallback(int x, int y)
 {
-#ifdef _WINDOWS
     if (m_DeviceParams.enablePerMonitorDPI)
     {
+#ifdef _WINDOWS
+        // Use Windows-specific implementation of DPI query because GLFW has issues:
+        // glfwGetWindowMonitor(window) returns NULL for non-fullscreen applications.
+        // This custom code allows us to adjust DPI scaling when a window is moved
+        // between monitors with different scales.
+        
         HWND hwnd = glfwGetWin32Window(m_Window);
         auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 
@@ -646,8 +651,23 @@ void DeviceManager::WindowPosCallback(int x, int y)
 
         m_DPIScaleFactorX = dpiX / 96.f;
         m_DPIScaleFactorY = dpiY / 96.f;
+#else
+        // Linux support for display scaling using GLFW.
+        // This has limited utility due to the issue described above (NULL monitor),
+        // and because GLFW doesn't support fractional scaling properly.
+        // For example, on a system with 150% scaling it will report scale = 2.0
+        // but the window will be either too small or too big, depending on 'resizeWindowWithDisplayScale'
+
+        GLFWmonitor* monitor = glfwGetWindowMonitor(m_Window);
+
+        // Non-fullscreen windows have NULL monitor, let's use the primary monitor in this case
+        if (!monitor)
+            monitor = glfwGetPrimaryMonitor();
+
+        glfwGetMonitorContentScale(monitor, &m_DPIScaleFactorX, &m_DPIScaleFactorY);
+#endif
     }
-#endif    
+
     if (m_EnableRenderDuringWindowMovement && m_SwapChainFramebuffers.size() > 0)
     {
         if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this, m_FrameIndex);
