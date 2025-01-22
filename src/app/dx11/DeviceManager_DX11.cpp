@@ -62,6 +62,10 @@ freely, subject to the following restrictions:
 #include <nvrhi/d3d11.h>
 #include <nvrhi/validation.h>
 
+#if DONUT_WITH_STREAMLINE
+#include <StreamlineIntegration.h>
+#endif
+
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;
@@ -195,7 +199,18 @@ bool DeviceManager_DX11::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters
 
 bool DeviceManager_DX11::CreateDevice()
 {
+#if DONUT_WITH_STREAMLINE
+    const bool kCheckSig = true;
+    StreamlineIntegration::Get().InitializePreDevice(nvrhi::GraphicsAPI::D3D11, m_DeviceParams.streamlineAppId, kCheckSig, m_DeviceParams.enableStreamlineLog);
+#endif
+
     int adapterIndex = m_DeviceParams.adapterIndex;
+
+#if DONUT_WITH_STREAMLINE
+    // Auto select best adapter for streamline features
+    if (adapterIndex < 0)
+        adapterIndex = StreamlineIntegration::Get().FindBestAdapter();
+#endif
     if (adapterIndex < 0)
         adapterIndex = 0;
 
@@ -208,13 +223,12 @@ bool DeviceManager_DX11::CreateDevice()
         return false;
     }
     
-    {
-        DXGI_ADAPTER_DESC aDesc;
-        m_DxgiAdapter->GetDesc(&aDesc);
+    DXGI_ADAPTER_DESC aDesc;
+    
+    m_DxgiAdapter->GetDesc(&aDesc);
 
-        m_RendererString = GetAdapterName(aDesc);
-        m_IsNvidia = IsNvDeviceID(aDesc.VendorId);
-    }
+    m_RendererString = GetAdapterName(aDesc);
+    m_IsNvidia = IsNvDeviceID(aDesc.VendorId);
 
     UINT createFlags = 0;
     if (m_DeviceParams.enableDebugRuntime)
@@ -251,6 +265,13 @@ bool DeviceManager_DX11::CreateDevice()
     {
         m_NvrhiDevice = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
     }
+
+#if DONUT_WITH_STREAMLINE
+    AdapterInfo::LUID luid;
+    static_assert(luid.size() == sizeof(aDesc.AdapterLuid));
+    memcpy(luid.data(), &aDesc.AdapterLuid, luid.size());
+    StreamlineIntegration::Get().InitializeDeviceDX(m_NvrhiDevice, &luid);
+#endif
 
     return true;
 }

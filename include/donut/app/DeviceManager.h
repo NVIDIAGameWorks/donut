@@ -69,6 +69,10 @@ freely, subject to the following restrictions:
 #include "AftermathCrashDump.h"
 #endif
 
+#if DONUT_WITH_STREAMLINE
+#include <donut/app/StreamlineInterface.h>
+#endif
+
 #define GLFW_INCLUDE_NONE // Do not include any OpenGL headers
 #include <GLFW/glfw3.h>
 #ifdef _WIN32
@@ -124,6 +128,11 @@ namespace donut::app
         std::vector<std::string> requiredVulkanLayers;
         std::vector<std::string> optionalVulkanInstanceExtensions;
         std::vector<std::string> optionalVulkanLayers;
+#endif
+
+#if DONUT_WITH_STREAMLINE
+        int streamlineAppId = 0;
+        bool enableStreamlineLog = false;
 #endif
     };
 
@@ -362,6 +371,10 @@ namespace donut::app
             std::function<void(DeviceManager&, uint32_t)> beforePresent = nullptr;
             std::function<void(DeviceManager&, uint32_t)> afterPresent = nullptr;
         } m_callbacks;
+
+#if DONUT_WITH_STREAMLINE
+        static StreamlineInterface& GetStreamline();
+#endif
 
     private:
         static DeviceManager* CreateD3D11();

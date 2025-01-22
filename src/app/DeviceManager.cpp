@@ -65,6 +65,10 @@ freely, subject to the following restrictions:
 #include <d3d12.h>
 #endif
 
+#if DONUT_WITH_STREAMLINE
+#include <StreamlineIntegration.h>
+#endif
+
 #ifdef _WINDOWS
 #include <ShellScalingApi.h>
 #pragma comment(lib, "shcore.lib")
@@ -495,6 +499,9 @@ void DeviceManager::RunMessageLoop()
 #endif
     while(!glfwWindowShouldClose(m_Window))
     {
+#if DONUT_WITH_STREAMLINE
+        StreamlineIntegration::Get().SimStart(*this);
+#endif
         if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this, m_FrameIndex);
         glfwPollEvents();
         UpdateWindowSize();
@@ -536,6 +543,9 @@ bool DeviceManager::AnimateRenderPresent()
 
         if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this, m_FrameIndex);
         Animate(elapsedTime);
+#if DONUT_WITH_STREAMLINE
+        StreamlineIntegration::Get().SimEnd(*this);
+#endif
         if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this, m_FrameIndex);
 
         // normal rendering           : A0    R0 P0 A1 R1 P1
@@ -548,6 +558,10 @@ bool DeviceManager::AnimateRenderPresent()
             {
                 // first time entering this loop, m_FrameIndex is 1 for m_SkipRenderOnFirstFrame, 0 otherwise;
                 uint32_t frameIndex = m_FrameIndex;
+
+#if DONUT_WITH_STREAMLINE
+                StreamlineIntegration::Get().RenderStart(*this);
+#endif
                 if (m_SkipRenderOnFirstFrame)
                 {
                     frameIndex--;
@@ -556,9 +570,16 @@ bool DeviceManager::AnimateRenderPresent()
                 if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this, frameIndex);
                 Render();
                 if (m_callbacks.afterRender) m_callbacks.afterRender(*this, frameIndex);
+#if DONUT_WITH_STREAMLINE
+                StreamlineIntegration::Get().RenderEnd(*this);
+                StreamlineIntegration::Get().PresentStart(*this);
+#endif
                 if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this, frameIndex);
                 bool presentSuccess = Present();
                 if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this, frameIndex);
+#if DONUT_WITH_STREAMLINE
+                StreamlineIntegration::Get().PresentEnd(*this);
+#endif
                 if (!presentSuccess)
                 {
                     return false;
@@ -831,6 +852,11 @@ void JoyStickManager::UpdateJoystick(int j, const std::list<IRenderPass*>& passe
 
 void DeviceManager::Shutdown()
 {
+#if DONUT_WITH_STREAMLINE
+    // Shut down Streamline before destroying swapchain and device.
+    StreamlineIntegration::Get().Shutdown();
+#endif
+
     m_SwapChainFramebuffers.clear();
 
     DestroyDeviceAndSwapChain();
@@ -959,3 +985,11 @@ void DefaultMessageCallback::message(nvrhi::MessageSeverity severity, const char
     
     donut::log::message(donutSeverity, "%s", messageText);
 }
+
+#if DONUT_WITH_STREAMLINE
+StreamlineInterface& DeviceManager::GetStreamline()
+{
+    // StreamlineIntegration doesn't support instances
+    return StreamlineIntegration::Get();
+}
+#endif

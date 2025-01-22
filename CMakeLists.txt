@@ -55,6 +55,8 @@ option(DONUT_WITH_MINIZ "Include miniz (support for zip archives)" ON)
 option(DONUT_WITH_TASKFLOW "Include TaskFlow" ON)
 option(DONUT_WITH_TINYEXR "Include TinyEXR" ON)
 option(DONUT_WITH_UNIT_TESTS "Donut unit-tests (see CMake/CTest documentation)" OFF)
+option(DONUT_WITH_STREAMLINE "Enable streamline, separate package required" OFF)
+
 
 if (WIN32)
     option(DONUT_FORCE_DISCRETE_GPU "Declare symbols to make the OS run the app on discrete GPU on laptops" OFF)
@@ -93,4 +95,12 @@ endif()
 if (DONUT_WITH_UNIT_TESTS)
     include(CTest)
     add_subdirectory(tests)
+endif()
+
+if (DONUT_WITH_STREAMLINE)
+    find_package(STREAMLINE REQUIRED)
+
+    if (STREAMLINE_FOUND)
+        add_subdirectory(${STREAMLINE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/streamline)
+    endif()
 endif()
