@@ -64,6 +64,10 @@ freely, subject to the following restrictions:
 
 #include <sstream>
 
+#if DONUT_WITH_STREAMLINE
+#include <StreamlineIntegration.h>
+#endif
+
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;
@@ -185,6 +189,11 @@ bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters
 
 bool DeviceManager_DX12::CreateDevice()
 {
+#if DONUT_WITH_STREAMLINE
+    const bool kCheckSig = true;
+    StreamlineIntegration::Get().InitializePreDevice(nvrhi::GraphicsAPI::D3D12, m_DeviceParams.streamlineAppId, kCheckSig, m_DeviceParams.enableStreamlineLog);
+#endif
+
     if (m_DeviceParams.enableDebugRuntime)
     {
         RefCountPtr<ID3D12Debug> pDebug;
@@ -208,6 +217,13 @@ bool DeviceManager_DX12::CreateDevice()
     }
     
     int adapterIndex = m_DeviceParams.adapterIndex;
+
+#if DONUT_WITH_STREAMLINE
+    // Auto select best adapter for streamline features
+    if (adapterIndex < 0)
+        adapterIndex = StreamlineIntegration::Get().FindBestAdapter();
+#endif
+
     if (adapterIndex < 0)
         adapterIndex = 0;
 
@@ -311,6 +327,10 @@ bool DeviceManager_DX12::CreateDevice()
     {
         m_NvrhiDevice = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
     }
+
+#if DONUT_WITH_STREAMLINE
+    StreamlineIntegration::Get().InitializeDeviceDX(m_NvrhiDevice);
+#endif
 
     return true;
 }

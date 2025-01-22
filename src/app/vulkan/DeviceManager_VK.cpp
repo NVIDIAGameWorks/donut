@@ -57,11 +57,20 @@ freely, subject to the following restrictions:
 #include <nvrhi/vulkan.h>
 #include <nvrhi/validation.h>
 
+#if DONUT_WITH_STREAMLINE
+#include <StreamlineIntegration.h>
+#endif
+
 // Define the Vulkan dynamic dispatcher - this needs to occur in exactly one cpp file in the program.
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace donut;
 using namespace donut::app;
+
+static constexpr uint32_t kComputeQueueIndex = 0;
+static constexpr uint32_t kGraphicsQueueIndex = 0;
+static constexpr uint32_t kPresentQueueIndex = 0;
+static constexpr uint32_t kTransferQueueIndex = 0;
 
 static std::vector<const char *> stringSetToVector(const std::unordered_set<std::string>& set)
 {
@@ -286,17 +295,19 @@ bool DeviceManager_VK::pickPhysicalDevice()
 
     auto devices = m_VulkanInstance.enumeratePhysicalDevices();
 
+    int adapterIndex = m_DeviceParams.adapterIndex;
+
     int firstDevice = 0;
     int lastDevice = int(devices.size()) - 1;
-    if (m_DeviceParams.adapterIndex >= 0)
+    if (adapterIndex >= 0)
     {
-        if (m_DeviceParams.adapterIndex > lastDevice)
+        if (adapterIndex > lastDevice)
         {
-            log::error("The specified Vulkan physical device %d does not exist.", m_DeviceParams.adapterIndex);
+            log::error("The specified Vulkan physical device %d does not exist.", adapterIndex);
             return false;
         }
-        firstDevice = m_DeviceParams.adapterIndex;
-        lastDevice = m_DeviceParams.adapterIndex;
+        firstDevice = adapterIndex;
+        lastDevice = adapterIndex;
     }
 
     // Start building an error message in case we cannot find a device.
@@ -430,13 +441,26 @@ bool DeviceManager_VK::pickPhysicalDevice()
     // pick the first discrete GPU if it exists, otherwise the first integrated GPU
     if (!discreteGPUs.empty())
     {
-        m_VulkanPhysicalDevice = discreteGPUs[0];
+        int selectedIndex = 0;
+#if DONUT_WITH_STREAMLINE
+        // Auto select best adapter for streamline features
+        if (adapterIndex < 0)
+            selectedIndex = StreamlineIntegration::Get().FindBestAdapter((void*)&discreteGPUs);
+#endif
+
+        m_VulkanPhysicalDevice = discreteGPUs[selectedIndex];
         return true;
     }
 
     if (!otherGPUs.empty())
     {
-        m_VulkanPhysicalDevice = otherGPUs[0];
+        int selectedIndex = 0;
+#if DONUT_WITH_STREAMLINE
+        // Auto select best adapter for streamline features
+        if (adapterIndex < 0)
+            selectedIndex = StreamlineIntegration::Get().FindBestAdapter((void*)&otherGPUs);
+#endif
+        m_VulkanPhysicalDevice = otherGPUs[selectedIndex];
         return true;
     }
 
@@ -713,13 +737,13 @@ bool DeviceManager_VK::createDevice()
         return false;
     }
 
-    m_VulkanDevice.getQueue(m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
+    m_VulkanDevice.getQueue(m_GraphicsQueueFamily, kGraphicsQueueIndex, &m_GraphicsQueue);
     if (m_DeviceParams.enableComputeQueue)
-        m_VulkanDevice.getQueue(m_ComputeQueueFamily, 0, &m_ComputeQueue);
+        m_VulkanDevice.getQueue(m_ComputeQueueFamily, kComputeQueueIndex, &m_ComputeQueue);
     if (m_DeviceParams.enableCopyQueue)
-        m_VulkanDevice.getQueue(m_TransferQueueFamily, 0, &m_TransferQueue);
+        m_VulkanDevice.getQueue(m_TransferQueueFamily, kTransferQueueIndex, &m_TransferQueue);
     if (!m_DeviceParams.headlessDevice)
-        m_VulkanDevice.getQueue(m_PresentQueueFamily, 0, &m_PresentQueue);
+        m_VulkanDevice.getQueue(m_PresentQueueFamily, kPresentQueueIndex, &m_PresentQueue);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_VulkanDevice);
 
@@ -926,6 +950,11 @@ bool DeviceManager_VK::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
 
 bool DeviceManager_VK::CreateDevice()
 {
+#if DONUT_WITH_STREAMLINE
+    const bool kCheckSig = true;
+    StreamlineIntegration::Get().InitializePreDevice(nvrhi::GraphicsAPI::VULKAN, m_DeviceParams.streamlineAppId, kCheckSig, m_DeviceParams.enableStreamlineLog);
+#endif
+
     if (m_DeviceParams.enableDebugRuntime)
     {
         installDebugCallback();
@@ -991,6 +1020,19 @@ bool DeviceManager_VK::CreateDevice()
     {
         m_ValidationLayer = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
     }
+
+#if DONUT_WITH_STREAMLINE
+    StreamlineIntegration::VulkanInfo vulkanInfo;
+    vulkanInfo.vkDevice = m_VulkanDevice;
+    vulkanInfo.vkInstance = m_VulkanInstance;
+    vulkanInfo.vkPhysicalDevice = m_VulkanPhysicalDevice;
+    vulkanInfo.computeQueueIndex = kComputeQueueIndex;
+    vulkanInfo.computeQueueFamily = m_ComputeQueueFamily;
+    vulkanInfo.graphicsQueueIndex = kGraphicsQueueIndex;
+    vulkanInfo.graphicsQueueFamily = m_GraphicsQueueFamily;
+    
+    StreamlineIntegration::Get().InitializeDeviceVK(m_NvrhiDevice, vulkanInfo);
+#endif
 
     return true;
 }
