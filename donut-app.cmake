@@ -59,6 +59,7 @@ target_sources(donut_app PRIVATE src/app/streamline/StreamlineIntegration.cpp)
 target_include_directories(donut_app PRIVATE src/app/streamline/)
 target_link_libraries(donut_app streamline)
 
+# The STREAMLINE_FEATURE_... options come from the Streamline CMakeLists.txt
 if (STREAMLINE_FEATURE_DEEPDVC)
     target_compile_definitions(donut_app PRIVATE STREAMLINE_FEATURE_DEEPDVC)
 endif()
