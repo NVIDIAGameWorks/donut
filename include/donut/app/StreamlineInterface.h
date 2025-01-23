@@ -30,6 +30,8 @@
 
 namespace donut::app 
 {
+class DeviceManager;
+
 class StreamlineInterface
 {
 public:
@@ -332,6 +334,13 @@ public:
         nvrhi::ITexture* specHitDist,
         nvrhi::ITexture* outputColor
     ) = 0;
+
+    virtual void SimStart(DeviceManager& manager) = 0;
+    virtual void SimEnd(DeviceManager& manager) = 0;
+    virtual void RenderStart(DeviceManager& manager) = 0;
+    virtual void RenderEnd(DeviceManager& manager) = 0;
+    virtual void PresentStart(DeviceManager& manager) = 0;
+    virtual void PresentEnd(DeviceManager& manager) = 0;
 };
 
 
