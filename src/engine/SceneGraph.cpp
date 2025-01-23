@@ -63,7 +63,7 @@ SkinnedMeshInstance::SkinnedMeshInstance(std::shared_ptr<SceneTypeFactory> scene
     
     for (const auto& geometry : m_PrototypeMesh->geometries)
     {
-        std::shared_ptr<MeshGeometry> newGeometry = std::make_shared<MeshGeometry>();
+        std::shared_ptr<MeshGeometry> newGeometry = m_SceneTypeFactory->CreateMeshGeometry();
         *newGeometry = *geometry;
         skinnedMesh->geometries.push_back(newGeometry);
     }
