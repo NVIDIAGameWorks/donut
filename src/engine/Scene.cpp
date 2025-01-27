@@ -1266,5 +1266,10 @@ void Scene::UpdateInstance(const std::shared_ptr<MeshInstance>& instance)
     idata.firstGeometryInstanceIndex = instance->GetGeometryInstanceIndex();
     idata.firstGeometryIndex = mesh->geometries[0]->globalGeometryIndex;
     idata.numGeometries = uint32_t(mesh->geometries.size());
-    idata.padding = 0u;
+    idata.flags = 0u;
+
+    if (mesh->type == MeshType::CurveDisjointOrthogonalTriangleStrips)
+    {
+        idata.flags |= InstanceFlags_CurveDisjointOrthogonalTriangleStrips;
+    }
 }
