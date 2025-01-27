@@ -179,9 +179,6 @@ public:
     void Shutdown();
     
     int FindBestAdapter(void* vkDevices = nullptr);
-#if DONUT_WITH_DX11
-    LUID& getD3D11LUID() { return m_d3d11Luid; }
-#endif
 };
 
 } // namespace donut::app

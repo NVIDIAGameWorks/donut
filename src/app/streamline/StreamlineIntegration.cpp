@@ -26,13 +26,17 @@
 #include <sl_hooks.h>
 #include <sl_version.h>
 
+#define STREAMLINE_HAS_DLSS_RR (SL_VERSION_MAJOR >= 2 && SL_VERSION_MINOR >= 7 && SL_VERSION_PATCH >= 0)
+
 // Streamline Features
 #include <sl_dlss.h>
 #include <sl_reflex.h>
 #include <sl_nis.h>
 #include <sl_dlss_g.h>
 #include <sl_deepdvc.h>
+#if STREAMLINE_HAS_DLSS_RR
 #include <sl_dlss_d.h>
+#endif
 
 #include <donut/core/log.h>
 #include <filesystem>
@@ -249,7 +253,7 @@ bool StreamlineIntegration::InitializePreDevice(nvrhi::GraphicsAPI api, int appI
 #if STREAMLINE_FEATURE_DEEPDVC
         sl::kFeatureDeepDVC,
 #endif
-#if STREAMLINE_FEATURE_DLSS_RR
+#if STREAMLINE_FEATURE_DLSS_RR && STREAMLINE_HAS_DLSS_RR
         sl::kFeatureDLSS_RR,
 #endif
         // PCL is always implicitly loaded, but request it to ensure we never have 0-sized array
@@ -401,7 +405,7 @@ int StreamlineIntegration::FindBestAdapter(void* vkDevices)
 #if STREAMLINE_FEATURE_DEEPDVC
             supportedSLFeatureCnt += static_cast<uint32_t>(checkFeature(sl::kFeatureDeepDVC, "DeepDVC"));
 #endif
-#if STREAMLINE_FEATURE_DLSS_RR
+#if STREAMLINE_FEATURE_DLSS_RR && STREAMLINE_HAS_DLSS_RR
             supportedSLFeatureCnt += static_cast<uint32_t>(checkFeature(sl::kFeatureDLSS_RR, "DLSS_RR"));
 #endif
 
@@ -572,7 +576,7 @@ void StreamlineIntegration::UpdateFeatureAvailable()
     else log::warning("DeepDVC is not fully functional on this system.");
 #endif
 
-#if STREAMLINE_FEATURE_DLSS_RR
+#if STREAMLINE_FEATURE_DLSS_RR && STREAMLINE_HAS_DLSS_RR
     m_dlssrrAvailable = successCheck(slIsFeatureSupported(sl::kFeatureDLSS_RR, adapterInfo), "slIsFeatureSupported_DLSSRR");
     if (m_dlssrrAvailable) log::info("DLSS-RR is supported on this system.");
     else log::warning("DLSS-RR is not fully functional on this system.");
@@ -654,9 +658,12 @@ static sl::DLSSOptions ConvertOptions(const StreamlineIntegration::DLSSOptions& 
     static_assert(sl::DLSSPreset::ePresetE == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetE);
     static_assert(sl::DLSSPreset::ePresetF == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetF);
     static_assert(sl::DLSSPreset::ePresetG == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetG);
+
+#if (SL_VERSION_MAJOR >= 2 && SL_VERSION_MINOR >= 7 && SL_VERSION_PATCH >= 0)
     static_assert(sl::DLSSPreset::ePresetH == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetH);
     static_assert(sl::DLSSPreset::ePresetI == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetI);
     static_assert(sl::DLSSPreset::ePresetJ == (sl::DLSSPreset)StreamlineIntegration::DLSSPreset::ePresetJ);
+#endif
     
     static_assert(sl::DLSSMode::eOff == (sl::DLSSMode)StreamlineIntegration::DLSSMode::eOff);
     static_assert(sl::DLSSMode::eMaxPerformance == (sl::DLSSMode)StreamlineIntegration::DLSSMode::eMaxPerformance);
@@ -724,6 +731,7 @@ void StreamlineIntegration::QueryDLSSOptimalSettings(const DLSSOptions& options,
     settings.maxRenderSize.y = dlssOptimal.renderHeightMax;
 }
 
+#if STREAMLINE_HAS_DLSS_RR
 static sl::DLSSDOptions ConvertOptions(const StreamlineIntegration::DLSSRROptions& options)
 {
     static_assert(sl::DLSSDPreset::eDefault == (sl::DLSSDPreset)StreamlineIntegration::DLSSRRPreset::eDefault);
@@ -771,9 +779,11 @@ static sl::DLSSDOptions ConvertOptions(const StreamlineIntegration::DLSSRROption
 
     return slOptions;
 }
+#endif
 
 void StreamlineIntegration::SetDLSSRROptions(const DLSSRROptions& options)
 {
+#if STREAMLINE_HAS_DLSS_RR
     if (!m_slInitialized || !m_dlssrrAvailable)
     {
         log::warning("SL not initialised or DLSS-RR not available.");
@@ -781,10 +791,12 @@ void StreamlineIntegration::SetDLSSRROptions(const DLSSRROptions& options)
     }
 
     successCheck(slDLSSDSetOptions(m_viewport, ConvertOptions(options)), "slDLSSSetOptions");
+#endif
 }
 
 void StreamlineIntegration::QueryDLSSRROptimalSettings(const DLSSRROptions& options, DLSSRRSettings& settings)
 {
+#if STREAMLINE_HAS_DLSS_RR
     if (!m_slInitialized || !m_dlssrrAvailable)
     {
         log::warning("SL not initialised or DLSS RR is not available.");
@@ -802,7 +814,8 @@ void StreamlineIntegration::QueryDLSSRROptimalSettings(const DLSSRROptions& opti
     settings.minRenderSize.x = dlssOptimal.renderWidthMin;
     settings.minRenderSize.y = dlssOptimal.renderHeightMin;
     settings.maxRenderSize.x = dlssOptimal.renderWidthMax;
-    settings.maxRenderSize.y = dlssOptimal.renderHeightMax;    
+    settings.maxRenderSize.y = dlssOptimal.renderHeightMax;
+#endif
 }
 
 void StreamlineIntegration::CleanupDLSS(bool wfi)
@@ -945,8 +958,11 @@ void StreamlineIntegration::SetDLSSGOptions(const DLSSGOptions& options)
     slOptions.hudLessBufferFormat = options.hudLessBufferFormat;
     slOptions.uiBufferFormat = options.uiBufferFormat;
     slOptions.onErrorCallback = nullptr; // donut does not expose this
+
+#if (SL_VERSION_MAJOR >= 2 && SL_VERSION_MINOR >= 7 && SL_VERSION_PATCH >= 0)
     slOptions.useReflexMatrices = make_sl_bool(options.useReflexMatrices);
     slOptions.queueParallelismMode = (sl::DLSSGQueueParallelismMode)options.queueParallelismMode;
+#endif
 
     successCheck(slDLSSGSetOptions(m_viewport, slOptions), "slDLSSGSetOptions");
 }
@@ -1350,12 +1366,13 @@ void StreamlineIntegration::TagResourcesDLSSRR(
         log::error("No device available.");
         return;
     }
-    if (m_device->getGraphicsAPI() != nvrhi::GraphicsAPI::D3D12)
+    if (m_api != nvrhi::GraphicsAPI::D3D12)
     {
         log::error("Non-D3D12 not implemented");
         return;
     }
 
+#if STREAMLINE_HAS_DLSS_RR
     sl::Extent renderExtent{ 0, 0, inputColor->getDesc().width, inputColor->getDesc().height };
     sl::Extent fullExtent{ 0, 0, outputColor->getDesc().width, outputColor->getDesc().height };
     sl::Resource inputColorResource, diffuseAlbedoResource, specAlbedoResource, normalsResource, roughnessResource, specHitDistResource, outputColorResource;
@@ -1386,6 +1403,7 @@ void StreamlineIntegration::TagResourcesDLSSRR(
 
     sl::ResourceTag inputs[] = { inputColorResourceTag, diffuseAlbedoResourceTag, specAlbedoResourceTag, normalsResourceTag, roughnessResourceTag, specHitDistResourceTag, outputColorResourceTag };
     successCheck(slSetTag(m_viewport, inputs, _countof(inputs), cmdbuffer), "slSetTag_DLSSRR");
+#endif
 }
 
 void StreamlineIntegration::EvaluateDLSS(nvrhi::ICommandList* commandList)
@@ -1407,6 +1425,7 @@ void StreamlineIntegration::EvaluateDLSS(nvrhi::ICommandList* commandList)
 
 void StreamlineIntegration::EvaluateDLSSRR(nvrhi::ICommandList* commandList)
 {
+#if STREAMLINE_HAS_DLSS_RR
     void* nativeCommandList = GetNativeCommandList(commandList);
     if (nativeCommandList == nullptr)
     {
@@ -1420,6 +1439,7 @@ void StreamlineIntegration::EvaluateDLSSRR(nvrhi::ICommandList* commandList)
 
     //Our pipeline is very simple so we can simply clear it, but normally state tracking should be implemented.
     commandList->clearState();
+#endif
 }
 
 void StreamlineIntegration::EvaluateNIS(nvrhi::ICommandList* commandList)
@@ -1473,7 +1493,10 @@ void StreamlineIntegration::SetReflexConsts(const ReflexOptions& options)
     static_assert(sl::ReflexMode::eOff == (sl::ReflexMode)StreamlineIntegration::ReflexMode::eOff);
     static_assert(sl::ReflexMode::eLowLatency == (sl::ReflexMode)StreamlineIntegration::ReflexMode::eLowLatency);
     static_assert(sl::ReflexMode::eLowLatencyWithBoost == (sl::ReflexMode)StreamlineIntegration::ReflexMode::eLowLatencyWithBoost);
+
+#if (SL_VERSION_MAJOR >= 2 && SL_VERSION_MINOR >= 7 && SL_VERSION_PATCH >= 0)
     static_assert(sl::ReflexMode::ReflexMode_eCount == (sl::ReflexMode)StreamlineIntegration::ReflexMode::ReflexMode_eCount);
+#endif
 
     sl::ReflexOptions slOptions;
     slOptions.mode = (sl::ReflexMode)options.mode;
