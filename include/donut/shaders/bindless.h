@@ -44,10 +44,11 @@ struct GeometryData
     uint materialIndex;
 };
 
+static const uint InstanceFlags_CurveDisjointOrthogonalTriangleStrips = 0x00000001u;
 
 struct InstanceData
 {
-    uint padding;
+    uint flags;
     uint firstGeometryInstanceIndex; // index into global list of geometry instances. 
                                      // foreach (Instance)
                                      //     foreach(Geo) index++
@@ -58,6 +59,8 @@ struct InstanceData
 
     float3x4 transform;
     float3x4 prevTransform;
+
+    bool IsCurveDOTS() { return (flags & InstanceFlags_CurveDisjointOrthogonalTriangleStrips) != 0; }
 };
 
 #ifndef __cplusplus
@@ -69,6 +72,7 @@ static const uint c_SizeOfNormal = 4;
 static const uint c_SizeOfJointIndices = 8;
 static const uint c_SizeOfJointWeights = 16;
 static const uint c_SizeOfCurveRadius = 4;
+static const uint c_SizeOfLssIndices = 4;
 
 // Define the sizes of these structures because FXC doesn't support sizeof(x)
 static const uint c_SizeOfGeometryData = 3*16;
@@ -108,7 +112,7 @@ InstanceData LoadInstanceData(ByteAddressBuffer buffer, uint offset)
     uint4 g = buffer.Load4(offset + 16 * 6);
 
     InstanceData ret;
-    ret.padding = a.x;
+    ret.flags = a.x;
     ret.firstGeometryInstanceIndex = a.y;
     ret.firstGeometryIndex = a.z;
     ret.numGeometries = a.w;

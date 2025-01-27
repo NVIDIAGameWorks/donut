@@ -242,9 +242,20 @@ namespace donut::engine
         virtual ~MeshGeometry() = default;
     };
 
+    enum class MeshType : uint8_t
+    {
+        Triangles,
+        CurvePolytubes,
+        CurveDisjointOrthogonalTriangleStrips,
+        CurveLinearSweptSpheres,
+
+        Count
+    };
+
     struct MeshInfo
     {
         std::string name;
+        MeshType type = MeshType::Triangles;
         std::shared_ptr<BufferGroup> buffers;
         std::shared_ptr<MeshInfo> skinPrototype;
         std::vector<std::shared_ptr<MeshGeometry>> geometries;
@@ -259,8 +270,14 @@ namespace donut::engine
         bool isSkinPrototype = false;
 
         virtual ~MeshInfo() = default;
+        bool IsCurve() const
+        {
+            return (type == MeshType::CurvePolytubes)
+                || (type == MeshType::CurveDisjointOrthogonalTriangleStrips)
+                || (type == MeshType::CurveLinearSweptSpheres);
+        }
     };
-    
+
     struct LightProbe
     {
         std::string name;

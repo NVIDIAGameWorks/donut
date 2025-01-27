@@ -818,6 +818,12 @@ bool GltfImporter::Load(
                 continue;
             }
 
+            if (prim.type == cgltf_primitive_type_line_strip ||
+                prim.type == cgltf_primitive_type_lines)
+            {
+                minfo->type = MeshType::CurvePolytubes;
+            }
+
             if (prim.indices)
             {
                 assert(prim.indices->component_type == cgltf_component_type_r_32u ||

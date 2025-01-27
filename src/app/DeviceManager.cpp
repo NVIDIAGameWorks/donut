@@ -310,6 +310,11 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);   // Ignored for fullscreen
 
+    if (params.startBorderless)
+    {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // Borderless window
+    }
+
     m_Window = glfwCreateWindow(params.backBufferWidth, params.backBufferHeight,
                                 windowTitle ? windowTitle : "",
                                 params.startFullscreen ? glfwGetPrimaryMonitor() : nullptr,
