@@ -55,7 +55,12 @@ option(DONUT_WITH_MINIZ "Include miniz (support for zip archives)" ON)
 option(DONUT_WITH_TASKFLOW "Include TaskFlow" ON)
 option(DONUT_WITH_TINYEXR "Include TinyEXR" ON)
 option(DONUT_WITH_UNIT_TESTS "Donut unit-tests (see CMake/CTest documentation)" OFF)
+
 option(DONUT_WITH_STREAMLINE "Enable streamline, separate package required" OFF)
+set(DONUT_STREAMLINE_FETCH_URL "" CACHE STRING "Url to streamline git repo to fetch")
+set(DONUT_STREAMLINE_FETCH_TAG "" CACHE STRING "Tag of streamline git repo")
+set(DONUT_STREAMLINE_FETCH_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/streamline" CACHE STRING "Directory to fetch streamline to, empty uses build directory default")
+set(DONUT_STREAMLINE_SEARCH_PATHS "" CACHE STRING "Search paths for streamline package")
 
 
 if (WIN32)
@@ -98,9 +103,37 @@ if (DONUT_WITH_UNIT_TESTS)
 endif()
 
 if (DONUT_WITH_STREAMLINE)
-    find_package(STREAMLINE REQUIRED)
+    # Validate that CMAKE_RUNTIME_OUTPUT_DIRECTORY is set.
+    # The Streamline CMake script uses it to copy DLLs, and it will fail at compile time with obscure messages
+    # if the variable is empty.
+    if (NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+        message(SEND_ERROR "Streamline integration requires that CMAKE_RUNTIME_OUTPUT_DIRECTORY is non-empty.")
+    endif()
+    
+    # XOR logic to make sure both options are set 
+    if ((DONUT_STREAMLINE_FETCH_URL AND NOT DONUT_STREAMLINE_FETCH_TAG) OR 
+        (NOT DONUT_STREAMLINE_FETCH_URL AND DONUT_STREAMLINE_FETCH_TAG))
+        message(SEND_ERROR "Both DONUT_STREAMLINE_FETCH_URL and DONUT_STREAMLINE_FETCH_TAG must be defined together")
+    endif()
 
-    if (STREAMLINE_FOUND)
-        add_subdirectory(${STREAMLINE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/streamline)
+    if (DONUT_STREAMLINE_FETCH_URL AND DONUT_STREAMLINE_FETCH_TAG)
+        include(FetchContent)
+        FetchContent_Declare(
+            streamline
+            GIT_REPOSITORY ${DONUT_STREAMLINE_FETCH_URL}
+            GIT_TAG ${DONUT_STREAMLINE_FETCH_TAG}
+            SOURCE_DIR ${DONUT_STREAMLINE_FETCH_DIR}
+        )
+        FetchContent_MakeAvailable(streamline)
+    else ()
+        if (DONUT_STREAMLINE_SEARCH_PATHS)
+            set(STREAMLINE_SEARCH_PATHS ${DONUT_STREAMLINE_SEARCH_PATHS})
+        endif()
+        find_package(STREAMLINE REQUIRED)
+
+        if (STREAMLINE_FOUND)
+            add_subdirectory(${STREAMLINE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/streamline)
+        endif()
     endif()
 endif()
+
