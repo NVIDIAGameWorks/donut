@@ -69,6 +69,7 @@ function(donut_compile_shaders)
         OUTPUT_FORMAT
         SPIRV_DXC
         SPIRV_SLANG
+        VULKAN_VERSION
         TARGET)
     set(multiValueArgs
         BYPRODUCTS_DXBC
@@ -97,6 +98,12 @@ function(donut_compile_shaders)
     if (params_RELAXED_INCLUDES)
         message(SEND_ERROR "donut_compile_shaders: The RELAXED_INCLUDES argument "
                            "is deprecated, use IGNORE_INCLUDES instead")
+    endif()
+
+    if (params_VULKAN_VERSION)
+        set(VULKAN_VERSION ${params_VULKAN_VERSION})
+    else()
+        set(VULKAN_VERSION 1.2)
     endif()
 
     if (NOT TARGET ${params_TARGET})
@@ -259,7 +266,7 @@ function(donut_compile_shaders)
            -D TARGET_VULKAN
            --compiler "${DXC_SPIRV_PATH}"
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
-           --vulkanVersion 1.2
+           --vulkanVersion ${VULKAN_VERSION}
            ${use_api_arg})
 
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
@@ -294,7 +301,7 @@ function(donut_compile_shaders)
            --compiler "${SLANGC_PATH}"
            --slang
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
-           --vulkanVersion 1.2)
+           --vulkanVersion ${VULKAN_VERSION})
 
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_SPIRV})
