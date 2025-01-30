@@ -250,8 +250,8 @@ bool DeviceManager_VK::createInstance()
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(
-    VkDebugReportFlagsEXT flags,
-    VkDebugReportObjectTypeEXT objType,
+    vk::DebugReportFlagsEXT flags,
+    vk::DebugReportObjectTypeEXT objType,
     uint64_t obj,
     size_t location,
     int32_t code,
