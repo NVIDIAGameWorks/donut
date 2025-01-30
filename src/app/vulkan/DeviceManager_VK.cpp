@@ -50,6 +50,7 @@ freely, subject to the following restrictions:
 #include <string>
 #include <queue>
 #include <unordered_set>
+#include <memory>
 
 #include <donut/app/DeviceManager.h>
 #include <donut/app/DeviceManager_VK.h>
