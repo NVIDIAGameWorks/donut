@@ -124,6 +124,9 @@ namespace donut::app
         log::Severity infoLogSeverity = log::Severity::Info;
 
 #if DONUT_WITH_VULKAN
+        // Allows overriding the Vulkan library name with something custom, useful for Streamline
+        std::string vulkanLibraryName;
+        
         std::vector<std::string> requiredVulkanInstanceExtensions;
         std::vector<std::string> requiredVulkanLayers;
         std::vector<std::string> optionalVulkanInstanceExtensions;

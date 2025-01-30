@@ -887,8 +887,10 @@ bool DeviceManager_VK::CreateInstanceInternal()
         enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
     }
 
+    m_dynamicLoader = std::make_unique<VulkanDynamicLoader>(m_DeviceParams.vulkanLibraryName);
+
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
-        m_dynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+        m_dynamicLoader->getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
     return createInstance();

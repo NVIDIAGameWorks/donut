@@ -267,8 +267,10 @@ protected:
     bool m_BufferDeviceAddressSupported = false;
 
 #if VK_HEADER_VERSION >= 301
-    vk::detail::DynamicLoader m_dynamicLoader;
+    typedef vk::detail::DynamicLoader VulkanDynamicLoader;
 #else
-    vk::DynamicLoader m_dynamicLoader;
+    typedef vk::DynamicLoader VulkanDynamicLoader;
 #endif
+
+    std::unique_ptr<VulkanDynamicLoader> m_dynamicLoader;
 };
