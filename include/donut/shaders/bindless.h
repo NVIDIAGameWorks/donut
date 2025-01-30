@@ -72,7 +72,6 @@ static const uint c_SizeOfNormal = 4;
 static const uint c_SizeOfJointIndices = 8;
 static const uint c_SizeOfJointWeights = 16;
 static const uint c_SizeOfCurveRadius = 4;
-static const uint c_SizeOfLssIndices = 4;
 
 // Define the sizes of these structures because FXC doesn't support sizeof(x)
 static const uint c_SizeOfGeometryData = 3*16;
