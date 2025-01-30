@@ -117,6 +117,7 @@ if (DONUT_WITH_STREAMLINE)
     endif()
 
     if (DONUT_STREAMLINE_FETCH_URL AND DONUT_STREAMLINE_FETCH_TAG)
+        message(STATUS "Updating Streamline from " ${DONUT_STREAMLINE_FETCH_URL} ", tag " ${DONUT_STREAMLINE_FETCH_TAG} ", into folder " ${DONUT_STREAMLINE_FETCH_DIR} " - please wait!" )
         include(FetchContent)
         FetchContent_Declare(
             streamline
