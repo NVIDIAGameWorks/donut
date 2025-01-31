@@ -960,7 +960,6 @@ void StreamlineIntegration::SetDLSSGOptions(const DLSSGOptions& options)
     slOptions.onErrorCallback = nullptr; // donut does not expose this
 
 #if (SL_VERSION_MAJOR >= 2 && SL_VERSION_MINOR >= 7 && SL_VERSION_PATCH >= 0)
-    slOptions.useReflexMatrices = make_sl_bool(options.useReflexMatrices);
     slOptions.queueParallelismMode = (sl::DLSSGQueueParallelismMode)options.queueParallelismMode;
 #endif
 
