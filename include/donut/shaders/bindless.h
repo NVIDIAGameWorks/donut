@@ -41,7 +41,11 @@ struct GeometryData
     uint normalOffset;
     uint tangentOffset;
     uint curveRadiusOffset;
+
     uint materialIndex;
+    uint pad0;
+    uint pad1;
+    uint pad2;
 };
 
 static const uint InstanceFlags_CurveDisjointOrthogonalTriangleStrips = 0x00000001u;
@@ -74,15 +78,16 @@ static const uint c_SizeOfJointWeights = 16;
 static const uint c_SizeOfCurveRadius = 4;
 
 // Define the sizes of these structures because FXC doesn't support sizeof(x)
-static const uint c_SizeOfGeometryData = 3*16;
+static const uint c_SizeOfGeometryData = 4*16;
 static const uint c_SizeOfInstanceData = 7*16;
-static const uint c_SizeOfMaterialConstants = 7*16;
+static const uint c_SizeOfMaterialConstants = 13*16;
 
 GeometryData LoadGeometryData(ByteAddressBuffer buffer, uint offset)
 {
     uint4 a = buffer.Load4(offset + 16 * 0);
     uint4 b = buffer.Load4(offset + 16 * 1);
     uint4 c = buffer.Load4(offset + 16 * 2);
+    uint4 d = buffer.Load4(offset + 16 * 3);
 
     GeometryData ret;
     ret.numIndices = a.x;
@@ -96,7 +101,11 @@ GeometryData LoadGeometryData(ByteAddressBuffer buffer, uint offset)
     ret.texCoord2Offset = c.x;
     ret.normalOffset = c.y;
     ret.tangentOffset = c.z;
-    ret.materialIndex = c.w;
+    ret.curveRadiusOffset = c.w;
+    ret.materialIndex = d.x;
+    ret.pad0 = d.y;
+    ret.pad1 = d.z;
+    ret.pad2 = d.w;
     return ret;
 }
 
