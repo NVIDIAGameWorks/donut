@@ -40,6 +40,8 @@ static const int MaterialFlags_UseOcclusionTexture              = 0x00000040;
 static const int MaterialFlags_UseTransmissionTexture           = 0x00000080;
 static const int MaterialFlags_MetalnessInRedChannel            = 0x00000100;
 static const int MaterialFlags_UseOpacityTexture                = 0x00000200;
+static const int MaterialFlags_SubsurfaceScattering             = 0x00000400;
+static const int MaterialFlags_Hair                             = 0x00000800;
 
 // NOTE: adjust LoadMaterialConstants(...) in bindless.h when changing this structure
 
@@ -72,6 +74,26 @@ struct MaterialConstants
     int     transmissionTextureIndex;
     int     opacityTextureIndex;
     float2  normalTextureTransformScale;
+
+    uint3   padding1;
+    float   sssScale;
+
+    float3  sssTransmissionColor;
+    float   sssAnisotropy;
+
+    float3  sssScatteringColor;
+    float   hairMelanin;
+
+    float3  hairBaseColor;
+    float   hairMelaninRedness;
+
+    float   hairLongitudinalRoughness;
+    float   hairAzimuthalRoughness;
+    float   hairIor;
+    float   hairCuticleAngle;
+
+    float3  hairDiffuseReflectionTint;
+    float   hairDiffuseReflectionWeight;
 };
 
 #endif // MATERIAL_CB_H

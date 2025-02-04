@@ -69,6 +69,10 @@ freely, subject to the following restrictions:
 #include "AftermathCrashDump.h"
 #endif
 
+#if DONUT_WITH_STREAMLINE
+#include <donut/app/StreamlineInterface.h>
+#endif
+
 #define GLFW_INCLUDE_NONE // Do not include any OpenGL headers
 #include <GLFW/glfw3.h>
 #ifdef _WIN32
@@ -100,6 +104,8 @@ namespace donut::app
 #if DONUT_WITH_AFTERMATH
         bool enableAftermath = false;
 #endif
+        bool logBufferLifetime = false;
+        bool enableHeapDirectlyIndexed = false; // Allows ResourceDescriptorHeap on DX12
 
         // Enables per-monitor DPI scale support.
         //
@@ -118,17 +124,26 @@ namespace donut::app
         log::Severity infoLogSeverity = log::Severity::Info;
 
 #if DONUT_WITH_VULKAN
+        // Allows overriding the Vulkan library name with something custom, useful for Streamline
+        std::string vulkanLibraryName;
+        
         std::vector<std::string> requiredVulkanInstanceExtensions;
         std::vector<std::string> requiredVulkanLayers;
         std::vector<std::string> optionalVulkanInstanceExtensions;
         std::vector<std::string> optionalVulkanLayers;
 #endif
+
+#if DONUT_WITH_STREAMLINE
+        int streamlineAppId = 0;
+        bool enableStreamlineLog = false;
+#endif
     };
 
     struct DeviceCreationParameters : public InstanceParameters
     {
-        bool startMaximized = false;
+        bool startMaximized = false; // ignores backbuffer width/height to be monitor size
         bool startFullscreen = false;
+        bool startBorderless = false;
         bool allowModeSwitch = true;
         int windowPosX = -1;            // -1 means use default placement
         int windowPosY = -1;
@@ -166,6 +181,8 @@ namespace donut::app
         // that it is located on. When set to true and the app launches on a monitor with >100% scale, 
         // the initial window size will be larger than specified in 'backBufferWidth' and 'backBufferHeight' parameters.
         bool resizeWindowWithDisplayScale = false;
+
+        nvrhi::IMessageCallback *messageCallback = nullptr;
 
 #if DONUT_WITH_DX11 || DONUT_WITH_DX12
         DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -243,6 +260,9 @@ namespace donut::app
         }
 
     protected:
+        // useful for apps that require 2 frames worth of simulation data before first render
+        // apps should extend the DeviceManager classes, and constructor initialized this to true to opt in to the behavior
+        bool m_SkipRenderOnFirstFrame = false;
         bool m_windowVisible = false;
         bool m_windowIsInFocus = true;
 
@@ -344,15 +364,21 @@ namespace donut::app
         virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string>& extensions) const { }
         virtual void GetEnabledVulkanLayers(std::vector<std::string>& layers) const { }
 
+        // GetFrameIndex cannot be used inside of these callbacks, hence the additional passing of frameID
+        // Refer to AnimateRenderPresent implementation for more details
         struct PipelineCallbacks {
-            std::function<void(DeviceManager&)> beforeFrame = nullptr;
-            std::function<void(DeviceManager&)> beforeAnimate = nullptr;
-            std::function<void(DeviceManager&)> afterAnimate = nullptr;
-            std::function<void(DeviceManager&)> beforeRender = nullptr;
-            std::function<void(DeviceManager&)> afterRender = nullptr;
-            std::function<void(DeviceManager&)> beforePresent = nullptr;
-            std::function<void(DeviceManager&)> afterPresent = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeFrame = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeAnimate = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterAnimate = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforeRender = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterRender = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> beforePresent = nullptr;
+            std::function<void(DeviceManager&, uint32_t)> afterPresent = nullptr;
         } m_callbacks;
+
+#if DONUT_WITH_STREAMLINE
+        static StreamlineInterface& GetStreamline();
+#endif
 
     private:
         static DeviceManager* CreateD3D11();
@@ -377,6 +403,7 @@ namespace donut::app
 
         virtual ~IRenderPass() = default;
 
+        virtual void SetLatewarpOptions() { }
         virtual bool ShouldRenderUnfocused() { return false; }
         virtual void Render(nvrhi::IFramebuffer* framebuffer) { }
         virtual void Animate(float fElapsedTimeSeconds) { }

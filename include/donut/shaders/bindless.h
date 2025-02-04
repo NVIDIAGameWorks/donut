@@ -40,13 +40,19 @@ struct GeometryData
     uint texCoord2Offset;
     uint normalOffset;
     uint tangentOffset;
+    uint curveRadiusOffset;
+
     uint materialIndex;
+    uint pad0;
+    uint pad1;
+    uint pad2;
 };
 
+static const uint InstanceFlags_CurveDisjointOrthogonalTriangleStrips = 0x00000001u;
 
 struct InstanceData
 {
-    uint padding;
+    uint flags;
     uint firstGeometryInstanceIndex; // index into global list of geometry instances. 
                                      // foreach (Instance)
                                      //     foreach(Geo) index++
@@ -57,6 +63,8 @@ struct InstanceData
 
     float3x4 transform;
     float3x4 prevTransform;
+
+    bool IsCurveDOTS() { return (flags & InstanceFlags_CurveDisjointOrthogonalTriangleStrips) != 0; }
 };
 
 #ifndef __cplusplus
@@ -67,17 +75,19 @@ static const uint c_SizeOfTexcoord = 8;
 static const uint c_SizeOfNormal = 4;
 static const uint c_SizeOfJointIndices = 8;
 static const uint c_SizeOfJointWeights = 16;
+static const uint c_SizeOfCurveRadius = 4;
 
 // Define the sizes of these structures because FXC doesn't support sizeof(x)
-static const uint c_SizeOfGeometryData = 3*16;
+static const uint c_SizeOfGeometryData = 4*16;
 static const uint c_SizeOfInstanceData = 7*16;
-static const uint c_SizeOfMaterialConstants = 7*16;
+static const uint c_SizeOfMaterialConstants = 13*16;
 
 GeometryData LoadGeometryData(ByteAddressBuffer buffer, uint offset)
 {
     uint4 a = buffer.Load4(offset + 16 * 0);
     uint4 b = buffer.Load4(offset + 16 * 1);
     uint4 c = buffer.Load4(offset + 16 * 2);
+    uint4 d = buffer.Load4(offset + 16 * 3);
 
     GeometryData ret;
     ret.numIndices = a.x;
@@ -91,7 +101,11 @@ GeometryData LoadGeometryData(ByteAddressBuffer buffer, uint offset)
     ret.texCoord2Offset = c.x;
     ret.normalOffset = c.y;
     ret.tangentOffset = c.z;
-    ret.materialIndex = c.w;
+    ret.curveRadiusOffset = c.w;
+    ret.materialIndex = d.x;
+    ret.pad0 = d.y;
+    ret.pad1 = d.z;
+    ret.pad2 = d.w;
     return ret;
 }
 
@@ -106,7 +120,7 @@ InstanceData LoadInstanceData(ByteAddressBuffer buffer, uint offset)
     uint4 g = buffer.Load4(offset + 16 * 6);
 
     InstanceData ret;
-    ret.padding = a.x;
+    ret.flags = a.x;
     ret.firstGeometryInstanceIndex = a.y;
     ret.firstGeometryIndex = a.z;
     ret.numGeometries = a.w;
@@ -124,6 +138,12 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     uint4 e = buffer.Load4(offset + 16 * 4);
     uint4 f = buffer.Load4(offset + 16 * 5);
     uint4 g = buffer.Load4(offset + 16 * 6);
+    uint4 h = buffer.Load4(offset + 16 * 7);
+    uint4 i = buffer.Load4(offset + 16 * 8);
+    uint4 j = buffer.Load4(offset + 16 * 9);
+    uint4 k = buffer.Load4(offset + 16 * 10);
+    uint4 l = buffer.Load4(offset + 16 * 11);
+    uint4 m = buffer.Load4(offset + 16 * 12);
 
     MaterialConstants ret;
     ret.baseOrDiffuseColor = asfloat(a.xyz);
@@ -147,6 +167,20 @@ MaterialConstants LoadMaterialConstants(ByteAddressBuffer buffer, uint offset)
     ret.transmissionTextureIndex = int(g.x);
     ret.opacityTextureIndex = int(g.y);
     ret.normalTextureTransformScale = asfloat(g.zw);
+    ret.padding1 = h.xyz;
+    ret.sssScale = int(h.w);
+    ret.sssTransmissionColor = asfloat(i.xyz);
+    ret.sssAnisotropy = asfloat(i.w);
+    ret.sssScatteringColor = asfloat(j.xyz);
+    ret.hairMelanin = asfloat(j.w);
+    ret.hairBaseColor = asfloat(k.xyz);
+    ret.hairMelaninRedness = asfloat(k.w);
+    ret.hairLongitudinalRoughness = asfloat(l.x);
+    ret.hairAzimuthalRoughness = asfloat(l.y);
+    ret.hairIor = asfloat(l.z);
+    ret.hairCuticleAngle = asfloat(l.w);
+    ret.hairDiffuseReflectionTint = asfloat(m.xyz);
+    ret.hairDiffuseReflectionWeight = asfloat(m.w);
     return ret;   
 }
 

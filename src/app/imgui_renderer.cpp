@@ -57,7 +57,7 @@ ImGui_Renderer::ImGui_Renderer(DeviceManager *devManager)
 {
     ImGui::CreateContext();
 
-    m_defaultFont = std::make_shared<RegisteredFont>(nullptr, false, 13.f);
+    m_defaultFont = std::make_shared<RegisteredFont>(13.f);
     m_fonts.push_back(m_defaultFont);
 }
 
@@ -101,7 +101,7 @@ std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromFile(IFileSystem& 
 {
 	auto fontData = fs.readFile(fontFile);
 	if (!fontData)
-		return nullptr;
+		return std::make_shared<RegisteredFont>();
 
 	auto font = std::make_shared<RegisteredFont>(fontData, false, fontSize);
     m_fonts.push_back(font);
@@ -113,7 +113,7 @@ std::shared_ptr<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryInternal(voi
     bool compressed, float fontSize)
 {
     if (!pData || !size)
-        return nullptr;
+		return std::make_shared<RegisteredFont>();
 
     // Copy the font data into a blob to make the RegisteredFont object own it
     void* dataCopy = malloc(size);
@@ -236,7 +236,9 @@ bool ImGui_Renderer::MouseButtonUpdate(int button, int action, int mods)
 
 void ImGui_Renderer::Animate(float elapsedTimeSeconds)
 {
-    if (!imgui_nvrhi)
+    // multiple Animate may be called before the first Render due to the m_SkipRenderOnFirstFrame extension
+    // ensure each imgui_nvrhi->beginFrame matches with exactly one imgui_nvrhi->Render
+    if (!imgui_nvrhi || m_beginFrameCalled)
         return;
 
     // Make sure that all registered fonts have corresponding ImFont objects at the current DPI scale
@@ -271,6 +273,8 @@ void ImGui_Renderer::Animate(float elapsedTimeSeconds)
     io.MouseDrawCursor = false;
 
     ImGui::NewFrame();
+    
+    m_beginFrameCalled = true;
 }
 
 void ImGui_Renderer::Render(nvrhi::IFramebuffer* framebuffer)
@@ -281,6 +285,7 @@ void ImGui_Renderer::Render(nvrhi::IFramebuffer* framebuffer)
 
     ImGui::Render();
     imgui_nvrhi->render(framebuffer);
+    m_beginFrameCalled = false;
 
     // reconcile mouse button states
     auto& io = ImGui::GetIO();
@@ -360,6 +365,8 @@ void RegisteredFont::CreateScaledFont(float displayScale)
     ImFontConfig fontConfig;
     fontConfig.SizePixels = m_sizeAtDefaultScale * displayScale;
 
+    m_imFont = nullptr;
+
     if (m_data)
     {
         fontConfig.FontDataOwnedByAtlas = false;
@@ -374,12 +381,15 @@ void RegisteredFont::CreateScaledFont(float displayScale)
                 (void*)(m_data->data()), (int)(m_data->size()), 0.f, &fontConfig);
         }
     }
-    else
+    else if (m_isDefault)
     {
         m_imFont = ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
     }
 
-    ImGui::GetIO().Fonts->TexID = 0;
+    if (m_imFont)
+    {
+        ImGui::GetIO().Fonts->TexID = 0;
+    }
 }
 
 void RegisteredFont::ReleaseScaledFont()

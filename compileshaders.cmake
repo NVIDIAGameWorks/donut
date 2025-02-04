@@ -42,6 +42,7 @@ set (NVRHI_DEFAULT_VK_REGISTER_OFFSETS
 #                       [SHADERMAKE_OPTIONS_DXBC <string>]  -- same, only DXBC specific
 #                       [SHADERMAKE_OPTIONS_DXIL <string>]  -- same, only DXIL specific
 #                       [SHADERMAKE_OPTIONS_SPIRV <string>] -- same, only SPIR-V specific
+#                       [SHADER_MODEL <string>]             -- shader model n_n format (default: 6_5)
 #                       [BYPRODUCTS_DXBC <list>]            -- list of generated files without paths,
 #                       [BYPRODUCTS_DXIL <list>]               needed to get correct incremental builds when
 #                       [BYPRODUCTS_SPIRV <list>]              using static shaders with Ninja generator
@@ -59,6 +60,7 @@ function(donut_compile_shaders)
         COMPILER_OPTIONS_DXBC   # deprecated
         COMPILER_OPTIONS_DXIL   # deprecated
         COMPILER_OPTIONS_SPIRV  # deprecated
+        SHADER_MODEL
         CONFIG
         DXBC
         DXIL
@@ -67,6 +69,7 @@ function(donut_compile_shaders)
         OUTPUT_FORMAT
         SPIRV_DXC
         SPIRV_SLANG
+        VULKAN_VERSION
         TARGET)
     set(multiValueArgs
         BYPRODUCTS_DXBC
@@ -97,6 +100,12 @@ function(donut_compile_shaders)
                            "is deprecated, use IGNORE_INCLUDES instead")
     endif()
 
+    if (params_VULKAN_VERSION)
+        set(VULKAN_VERSION ${params_VULKAN_VERSION})
+    else()
+        set(VULKAN_VERSION 1.2)
+    endif()
+
     if (NOT TARGET ${params_TARGET})
         # just add the source files to the project as documents, they are built by the script
         set_source_files_properties(${params_SOURCES} PROPERTIES VS_TOOL_OVERRIDE "None") 
@@ -105,6 +114,10 @@ function(donut_compile_shaders)
             DEPENDS ShaderMake
             SOURCES ${params_SOURCES})
     endif()
+	
+	if (NOT params_SHADER_MODEL)
+		set(params_SHADER_MODEL "6_5")
+	endif()
 
     if (WIN32)
         set(use_api_arg --useAPI)
@@ -156,7 +169,7 @@ function(donut_compile_shaders)
            ${ignore_includes}
            -D TARGET_D3D12
            --compiler "${DXC_PATH}"
-           --shaderModel 6_5
+           --shaderModel ${params_SHADER_MODEL}
            ${use_api_arg})
 
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
@@ -253,7 +266,7 @@ function(donut_compile_shaders)
            -D TARGET_VULKAN
            --compiler "${DXC_SPIRV_PATH}"
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
-           --vulkanVersion 1.2
+           --vulkanVersion ${VULKAN_VERSION}
            ${use_api_arg})
 
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
@@ -288,7 +301,7 @@ function(donut_compile_shaders)
            --compiler "${SLANGC_PATH}"
            --slang
            ${NVRHI_DEFAULT_VK_REGISTER_OFFSETS}
-           --vulkanVersion 1.2)
+           --vulkanVersion ${VULKAN_VERSION})
 
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS})
         list(APPEND compilerCommand ${params_SHADERMAKE_OPTIONS_SPIRV})

@@ -70,6 +70,7 @@ namespace donut::engine
         PrevTransform,
         JointIndices,
         JointWeights,
+        CurveRadius,
 
         Count
     };
@@ -137,6 +138,31 @@ namespace donut::engine
         // See the comments on the other fields here.
         bool useSpecularGlossModel = false;
 
+        // Subsurface Scattering
+        bool enableSubsurfaceScattering = false;
+        struct SubsurfaceParams
+        {
+            dm::float3 transmissionColor = 0.5f;
+            dm::float3 scatteringColor = 0.5f;
+            float scale = 1.0f;
+            float anisotropy = 0.0f;
+        } subsurface;
+
+        // Hair
+        bool enableHair = false;
+        struct HairParams
+        {
+            dm::float3 baseColor = 1.0f;
+            float melanin = 0.5f;
+            float melaninRedness = 0.5f;
+            float longitudinalRoughness = 0.25f;
+            float azimuthalRoughness = 0.6f;
+            float diffuseReflectionWeight = 0.0f;
+            dm::float3 diffuseReflectionTint = 0.0f;
+            float ior = 1.55f;
+            float cuticleAngle = 3.0f;
+        } hair;
+
         // Toggles for the textures. Only effective if the corresponding texture is non-null.
         bool enableBaseOrDiffuseTexture = true;
         bool enableMetalRoughOrSpecularTexture = true;
@@ -175,6 +201,7 @@ namespace donut::engine
         std::shared_ptr<DescriptorHandle> vertexBufferDescriptor;
         std::shared_ptr<DescriptorHandle> instnaceBufferDescriptor;
         std::array<nvrhi::BufferRange, size_t(VertexAttribute::Count)> vertexBufferRanges;
+        std::vector<nvrhi::BufferRange> morphTargetBufferRange;
         std::vector<uint32_t> indexData;
         std::vector<dm::float3> positionData;
         std::vector<dm::float2> texcoord1Data;
@@ -183,10 +210,21 @@ namespace donut::engine
         std::vector<uint32_t> tangentData;
         std::vector<dm::vector<uint16_t, 4>> jointData;
         std::vector<dm::float4> weightData;
+        std::vector<float> radiusData;
+        std::vector<dm::float4> morphTargetData;
 
         [[nodiscard]] bool hasAttribute(VertexAttribute attr) const { return vertexBufferRanges[int(attr)].byteSize != 0; }
         nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) { return vertexBufferRanges[int(attr)]; }
         [[nodiscard]] const nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) const { return vertexBufferRanges[int(attr)]; }
+    };
+
+    enum class MeshGeometryPrimitiveType : uint8_t
+    {
+        Triangles,
+        Lines,
+        LineStrip,
+
+        Count
     };
 
     struct MeshGeometry
@@ -199,12 +237,25 @@ namespace donut::engine
         uint32_t numVertices = 0;
         int globalGeometryIndex = 0;
 
+        MeshGeometryPrimitiveType type = MeshGeometryPrimitiveType::Triangles;
+
         virtual ~MeshGeometry() = default;
+    };
+
+    enum class MeshType : uint8_t
+    {
+        Triangles,
+        CurvePolytubes,
+        CurveDisjointOrthogonalTriangleStrips,
+        CurveLinearSweptSpheres,
+
+        Count
     };
 
     struct MeshInfo
     {
         std::string name;
+        MeshType type = MeshType::Triangles;
         std::shared_ptr<BufferGroup> buffers;
         std::shared_ptr<MeshInfo> skinPrototype;
         std::vector<std::shared_ptr<MeshGeometry>> geometries;
@@ -214,12 +265,19 @@ namespace donut::engine
         uint32_t totalIndices = 0;
         uint32_t totalVertices = 0;
         int globalMeshIndex = 0;
+        bool isMorphTargetAnimationMesh = false;
         nvrhi::rt::AccelStructHandle accelStruct; // for use by applications
         bool isSkinPrototype = false;
 
         virtual ~MeshInfo() = default;
+        bool IsCurve() const
+        {
+            return (type == MeshType::CurvePolytubes)
+                || (type == MeshType::CurveDisjointOrthogonalTriangleStrips)
+                || (type == MeshType::CurveLinearSweptSpheres);
+        }
     };
-    
+
     struct LightProbe
     {
         std::string name;

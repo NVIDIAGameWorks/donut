@@ -224,6 +224,27 @@ MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialCons
     if ((material.flags & MaterialFlags_UseNormalTexture) != 0)
         ApplyNormalMap(result, tangent, textures.normal, material.normalTextureScale);
 
+    if ((material.flags & MaterialFlags_SubsurfaceScattering) != 0)
+    {
+        result.subsurfaceParams.transmissionColor = material.sssTransmissionColor;
+        result.subsurfaceParams.scatteringColor = material.sssScatteringColor;
+        result.subsurfaceParams.scale = material.sssScale;
+        result.subsurfaceParams.anisotropy = material.sssAnisotropy;
+    }
+
+    if ((material.flags & MaterialFlags_Hair) != 0)
+    {
+        result.hairParams.baseColor = material.hairBaseColor;
+        result.hairParams.melanin = material.hairMelanin;
+        result.hairParams.melaninRedness = material.hairMelaninRedness;
+        result.hairParams.longitudinalRoughness = material.hairLongitudinalRoughness;
+        result.hairParams.azimuthalRoughness = material.hairAzimuthalRoughness;
+        result.hairParams.ior = material.hairIor;
+        result.hairParams.cuticleAngle = material.hairCuticleAngle;
+        result.hairParams.diffuseReflectionWeight = material.hairDiffuseReflectionWeight;
+        result.hairParams.diffuseReflectionTint = material.hairDiffuseReflectionTint;
+    }
+
     return result;
 }
 

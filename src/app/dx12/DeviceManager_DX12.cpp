@@ -52,6 +52,7 @@ freely, subject to the following restrictions:
 #include <vector>
 
 #include <donut/app/DeviceManager.h>
+#include <donut/app/DeviceManager_DX12.h>
 #include <donut/core/log.h>
 
 #include <Windows.h>
@@ -63,74 +64,17 @@ freely, subject to the following restrictions:
 
 #include <sstream>
 
+#if DONUT_WITH_STREAMLINE
+#include <StreamlineIntegration.h>
+#endif
+
 using nvrhi::RefCountPtr;
 
 using namespace donut::app;
 
 #define HR_RETURN(hr) if(FAILED(hr)) return false;
 
-class DeviceManager_DX12 : public DeviceManager
-{
-    RefCountPtr<IDXGIFactory2>                  m_DxgiFactory2;
-    RefCountPtr<ID3D12Device>                   m_Device12;
-    RefCountPtr<ID3D12CommandQueue>             m_GraphicsQueue;
-    RefCountPtr<ID3D12CommandQueue>             m_ComputeQueue;
-    RefCountPtr<ID3D12CommandQueue>             m_CopyQueue;
-    RefCountPtr<IDXGISwapChain3>                m_SwapChain;
-    DXGI_SWAP_CHAIN_DESC1                       m_SwapChainDesc{};
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC             m_FullScreenDesc{};
-    RefCountPtr<IDXGIAdapter>                   m_DxgiAdapter;
-    HWND                                        m_hWnd = nullptr;
-    bool                                        m_TearingSupported = false;
 
-    std::vector<RefCountPtr<ID3D12Resource>>    m_SwapChainBuffers;
-    std::vector<nvrhi::TextureHandle>           m_RhiSwapChainBuffers;
-    RefCountPtr<ID3D12Fence>                    m_FrameFence;
-    std::vector<HANDLE>                         m_FrameFenceEvents;
-
-    UINT64                                      m_FrameCount = 1;
-
-    nvrhi::DeviceHandle                         m_NvrhiDevice;
-
-    std::string                                 m_RendererString;
-
-public:
-    const char *GetRendererString() const override
-    {
-        return m_RendererString.c_str();
-    }
-
-    nvrhi::IDevice *GetDevice() const override
-    {
-        return m_NvrhiDevice;
-    }
-
-    void ReportLiveObjects() override;
-    bool EnumerateAdapters(std::vector<AdapterInfo>& outAdapters) override;
-
-    nvrhi::GraphicsAPI GetGraphicsAPI() const override
-    {
-        return nvrhi::GraphicsAPI::D3D12;
-    }
-    
-protected:
-    bool CreateInstanceInternal() override;
-    bool CreateDevice() override;
-    bool CreateSwapChain() override;
-    void DestroyDeviceAndSwapChain() override;
-    void ResizeSwapChain() override;
-    nvrhi::ITexture* GetCurrentBackBuffer() override;
-    nvrhi::ITexture* GetBackBuffer(uint32_t index) override;
-    uint32_t GetCurrentBackBufferIndex() override;
-    uint32_t GetBackBufferCount() override;
-    bool BeginFrame() override;
-    bool Present() override;
-    void Shutdown() override;
-
-private:
-    bool CreateRenderTargets();
-    void ReleaseRenderTargets();
-};
 
 static bool IsNvDeviceID(UINT id)
 {
@@ -191,17 +135,6 @@ void DeviceManager_DX12::ReportLiveObjects()
     }
 }
 
-static std::string GetAdapterName(DXGI_ADAPTER_DESC const& aDesc)
-{
-    size_t length = wcsnlen(aDesc.Description, _countof(aDesc.Description));
-
-    std::string name;
-    name.resize(length);
-    WideCharToMultiByte(CP_ACP, 0, aDesc.Description, int(length), name.data(), int(name.size()), nullptr, nullptr);
-
-    return name;
-}
-
 bool DeviceManager_DX12::CreateInstanceInternal()
 {
     if (!m_DxgiFactory2)
@@ -256,6 +189,11 @@ bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters
 
 bool DeviceManager_DX12::CreateDevice()
 {
+#if DONUT_WITH_STREAMLINE
+    const bool kCheckSig = true;
+    StreamlineIntegration::Get().InitializePreDevice(nvrhi::GraphicsAPI::D3D12, m_DeviceParams.streamlineAppId, kCheckSig, m_DeviceParams.enableStreamlineLog);
+#endif
+
     if (m_DeviceParams.enableDebugRuntime)
     {
         RefCountPtr<ID3D12Debug> pDebug;
@@ -279,6 +217,13 @@ bool DeviceManager_DX12::CreateDevice()
     }
     
     int adapterIndex = m_DeviceParams.adapterIndex;
+
+#if DONUT_WITH_STREAMLINE
+    // Auto select best adapter for streamline features
+    if (adapterIndex < 0)
+        adapterIndex = StreamlineIntegration::Get().FindBestAdapter();
+#endif
+
     if (adapterIndex < 0)
         adapterIndex = 0;
 
@@ -365,7 +310,7 @@ bool DeviceManager_DX12::CreateDevice()
     }
 
     nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.errorCB = &DefaultMessageCallback::GetInstance();
+    deviceDesc.errorCB = m_DeviceParams.messageCallback ? m_DeviceParams.messageCallback : &DefaultMessageCallback::GetInstance();
     deviceDesc.pDevice = m_Device12;
     deviceDesc.pGraphicsCommandQueue = m_GraphicsQueue;
     deviceDesc.pComputeCommandQueue = m_ComputeQueue;
@@ -373,6 +318,8 @@ bool DeviceManager_DX12::CreateDevice()
 #if DONUT_WITH_AFTERMATH
     deviceDesc.aftermathEnabled = m_DeviceParams.enableAftermath;
 #endif
+    deviceDesc.logBufferLifetime = m_DeviceParams.logBufferLifetime;
+    deviceDesc.enableHeapDirectlyIndexed = m_DeviceParams.enableHeapDirectlyIndexed;
 
     m_NvrhiDevice = nvrhi::d3d12::createDevice(deviceDesc);
 
@@ -380,6 +327,10 @@ bool DeviceManager_DX12::CreateDevice()
     {
         m_NvrhiDevice = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
     }
+
+#if DONUT_WITH_STREAMLINE
+    StreamlineIntegration::Get().InitializeDeviceDX(m_NvrhiDevice);
+#endif
 
     return true;
 }

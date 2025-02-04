@@ -118,6 +118,31 @@ namespace donut::engine
             break;
         }
 
+        if (enableSubsurfaceScattering)
+        {
+            constants.flags |= MaterialFlags_SubsurfaceScattering;
+
+            constants.sssTransmissionColor = subsurface.transmissionColor;
+            constants.sssScatteringColor = subsurface.scatteringColor;
+            constants.sssScale = subsurface.scale;
+            constants.sssAnisotropy = subsurface.anisotropy;
+        }
+
+        if (enableHair)
+        {
+            constants.flags |= MaterialFlags_Hair;
+
+            constants.hairBaseColor = hair.baseColor;
+            constants.hairMelanin = hair.melanin;
+            constants.hairMelaninRedness = hair.melaninRedness;
+            constants.hairLongitudinalRoughness = hair.longitudinalRoughness;
+            constants.hairAzimuthalRoughness = hair.azimuthalRoughness;
+            constants.hairIor = hair.ior;
+            constants.hairCuticleAngle = hair.cuticleAngle;
+            constants.hairDiffuseReflectionWeight = hair.diffuseReflectionWeight;
+            constants.hairDiffuseReflectionTint = hair.diffuseReflectionTint;
+        }
+
         // bindless textures
 
         constants.baseOrDiffuseTextureIndex = GetBindlessTextureIndex(baseOrDiffuseTexture);
@@ -127,6 +152,8 @@ namespace donut::engine
         constants.occlusionTextureIndex = GetBindlessTextureIndex(occlusionTexture);
         constants.transmissionTextureIndex = GetBindlessTextureIndex(transmissionTexture);
         constants.opacityTextureIndex = GetBindlessTextureIndex(opacityTexture);
+
+        constants.padding1 = uint3(0, 0, 0);
     }
 
     bool Material::SetProperty(const std::string& name, const dm::float4& value)
