@@ -31,7 +31,7 @@ Optional (also included as git submodules but can be disabled through CMake vari
 
 ## Examples
 
-Example projects that use Donut can be found in a separate repository: [donut_examples](https://github.com/NVIDIAGameWorks/donut_examples).
+Example projects that use Donut can be found in a separate repository: [Donut-Samples](https://github.com/NVIDIA-RTX/Donut-Samples).
 
 ## Build
 

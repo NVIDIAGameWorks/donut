@@ -1,6 +1,6 @@
 [submodule "nvrhi"]
 	path = nvrhi
-	url = https://github.com/NVIDIAGameWorks/nvrhi.git
+	url = https://github.com/NVIDIA-RTX/NVRHI.git
 [submodule "thirdparty/imgui"]
 	path = thirdparty/imgui
 	url = https://github.com/ocornut/imgui
@@ -24,4 +24,4 @@
 	url = https://github.com/richgel999/miniz.git
 [submodule "ShaderMake"]
 	path = ShaderMake
-	url = https://github.com/NVIDIAGameWorks/ShaderMake.git
+	url = https://github.com/NVIDIA-RTX/ShaderMake.git
